@@ -1,0 +1,1206 @@
+// AI Hub - 聚合平台数据模型
+// 与 Go (Gin + GORM) 共享同一个 Postgres 数据库
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String?
+  avatarUrl     String?
+  role          String   @default("user") // user | admin | agent
+  balance       Float    @default(0)       // 账户余额（元）
+  totalRecharge Float    @default(0)
+  totalSpent    Float    @default(0)
+
+  referralCode  String   @unique
+  referredById  String?
+  referredBy    User?    @relation("Referrals", fields: [referredById], references: [id])
+  referrals     User[]   @relation("Referrals")
+
+  apiKeys       ApiKey[]
+  transactions  Transaction[]
+  usages        Usage[]
+  commissions   Commission[]    @relation("CommissionUser")
+  fromCommissions Commission[]  @relation("CommissionSource")
+  feedbacks     Feedback[]
+  tasks         Task[]
+  mediaAssets   MediaAsset[]
+  voiceClones   VoiceClone[]
+  preferences   UserPreference[]
+  comicProjects ComicProject[]
+  assets        Asset[]
+  withdrawals   Withdrawal[]
+  chatPersonas  ChatPersona[]
+  comicV3Projects ComicProjectV3[]
+  ecomProjects    EcomProject[]
+  ecomAutoConfig  EcomAutoConfig?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// 用户在「单模型对话」里自定义的 AI 角色（人格 / Persona）
+/// 官方预设角色不入库，由 src/lib/personas.ts 提供
+model ChatPersona {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name          String
+  description   String?
+  /// 角色头像（emoji 或单字符），前端用渐变底色衬托
+  avatar        String?  @default("🤖")
+  /// system prompt：定义角色风格、职责、回答规范
+  systemPrompt  String
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+/// 代理商 / 用户提现申请与打款状态（代理商中心「提现记录」）
+model Withdrawal {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// alipay | wechat | bank
+  method      String   @default("alipay")
+  /// 收款账号展示（已脱敏）
+  accountMask String
+  /// 提现金额（元，正数；前端展示为负号扣款）
+  amount      Float
+  /// pending | success | failed
+  status      String   @default("pending")
+
+  requestedAt DateTime @default(now())
+  paidAt      DateTime?
+
+  note        String?
+  meta        String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, requestedAt])
+}
+
+/// 跨项目资产库（角色 / 场景 / 道具 / 技能）
+/// 用户在任何项目里识别/创建的资产都会进入这里，下次新项目识别同名时直接复用
+model Asset {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type          String                         // character | scene | prop | skill
+  /// 用户/AI 给的稳定名字（同一 userId 内 (type, name) 唯一）
+  name          String
+  description   String?
+  /// 主参考图（卡片大图）
+  referenceUrl  String?
+  /// 多角度参考图集合 JSON array of url
+  referenceUrls String?
+  visualAnchor  String?
+  /// 视觉风格快照（生成时用了哪个 visualStyle）
+  visualStyle   String?
+
+  /// 该资产首次创建时的源项目（仅用于审计 / 跳转）
+  sourceProjectId String?
+  /// 资产被引用次数（每复用一次 +1）
+  usageCount    Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, type, name])
+  @@index([userId, type])
+}
+
+/// 用户生成作品（图片 / 视频 / 音频）持久化
+/// 每次成功生成都写入一条，用于「个人中心 · 我的作品」画廊
+model MediaAsset {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  taskId      Int?                        // 异步任务来源（Task.id），同步接口为 null
+  modelId     String?
+  model       Model?   @relation(fields: [modelId], references: [id])
+
+  type        String                      // image | video | audio
+  url         String                      // 资源 URL
+  thumbnailUrl String?                    // 缩略图（视频可用封面，图片可复用）
+  prompt      String?                     // 提示词（截断保存）
+  params      String?                     // JSON，创建时的参数快照
+  width       Int?
+  height      Int?
+  durationSec Float?                      // 视频/音频时长
+  sizeBytes   Int?
+
+  cost        Float    @default(0)        // 该资产对应的成本（分摊到每张）
+  favorite    Boolean  @default(false)    // 用户收藏
+  deletedAt   DateTime?                   // 软删除，便于恢复/审计
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, type, createdAt])
+}
+
+/// 异步任务（图片 / 视频 / 音频 / 音乐）
+/// status 为原始字面值，业务判断请用 lib/task-status.ts 的 isFinal()
+model Task {
+  id           Int      @id @default(autoincrement())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelId      String?
+  model        Model?   @relation(fields: [modelId], references: [id])
+  channelId    String?
+  channel      Channel? @relation(fields: [channelId], references: [id])
+
+  type         String                 // image | video | audio | music | explain-comic
+  prompt       String
+  params       String?                // JSON（size/duration/aspect_ratio 等）
+  status       String   @default("creating")   // raw status, 对应 4 组
+  progress     Int      @default(0)              // 0-100
+  resultUrls   String?                           // JSON array of URLs
+  errorMessage String?
+  cost         Float    @default(0)              // 已扣费金额（= 售价）
+  realCost     Float    @default(0)              // 实际成本
+  refunded     Boolean  @default(false)          // 是否已退款
+
+  /// 上游异步任务 id（例如 Vidu 返回的 explain-comic task id）
+  /// 用于回调（callback）按字符串 id 反查本地 Task。
+  externalId   String?  @unique
+
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+/// 用户反馈 / 问题工单
+/// status: pending (未处理) | resolved (已处理) | ignored (已忽略)
+/// type: bug (接口报错) | feature (功能建议) | quality (生成质量) | other (其他)
+model Feedback {
+  id         Int      @id @default(autoincrement())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String                // bug | feature | quality | other
+  endpoint   String?               // 反馈涉及的接口/模型
+  question   String                // 用户描述
+  contact    String?               // 联系方式（选填）
+  meta       String?               // JSON：相关调用 id、请求参数摘要等
+  status     String   @default("pending") // pending | resolved | ignored
+  resolution String?               // 管理员填写的处理说明
+  resolvedBy String?               // 处理人 userId
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model ApiKey {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyPrefix  String
+  keyHash    String   @unique
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  /// open = 老行为：可访问所有启用渠道；restricted = 只允许 bindings 里的渠道
+  scopeMode  String   @default("open")
+  bindings   ApiKeyChannelBinding[]
+
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// 一把 Key 可绑 N 条渠道。调用时按 order 升序尝试 fallback。
+/// 若 ApiKey.scopeMode=restricted 且目标 Model 下没有任何 binding，返回 403。
+model ApiKeyChannelBinding {
+  id        String   @id @default(cuid())
+  apiKeyId  String
+  apiKey    ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  order     Int      @default(0)   // 0 最先尝试
+  createdAt DateTime @default(now())
+
+  @@unique([apiKeyId, channelId])
+  @@index([apiKeyId, order])
+}
+
+model Provider {
+  id        String   @id @default(cuid())
+  slug      String   @unique    // openai | anthropic | google | deepseek | replicate | runway ...
+  name      String
+  logo      String?
+  enabled   Boolean  @default(true)
+  models    Model[]
+  createdAt DateTime @default(now())
+}
+
+/// 上游聚合账号：一个 Upstream 代表一个可调用的上游账号
+/// 每条 Channel 绑定一个 Upstream 来实际执行调用
+model Upstream {
+  id        String   @id @default(cuid())
+  slug      String   @unique      // default | ai6700-main | openrouter ...
+  name      String                // 显示名
+  baseUrl   String                // 例如 https://api.ai6700.com
+  apiKey    String                // 明文存储（仅管理员可见）
+  enabled   Boolean  @default(true)
+  priority  Int      @default(100) // 整体优先级（越小越优先）
+  channels  Channel[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// 渠道：一个模型 + 一个上游 = 一条渠道
+/// 同一个 Model 可挂 N 条渠道，每条独立维护成本价 / 售价 / tier
+model Channel {
+  id                 String   @id @default(cuid())
+  modelId            String
+  model              Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  upstreamId         String
+  upstream           Upstream @relation(fields: [upstreamId], references: [id], onDelete: Restrict)
+
+  name               String                         // 对用户展示的档位名，如 "高级版" / "标准版"
+  tier               String   @default("standard")  // premium | standard | economy | custom
+  upstreamModelSlug  String?                        // 发给上游的 model 字段（空则用 Model.slug）
+
+  /// 该渠道专用的上游 API Key。空 = 使用 Upstream.apiKey。
+  /// 业务语义：同一个 baseUrl 可以挂 N 条渠道，每条绑不同的 key、不同价格（典型场景：
+  /// 聚合商按模型/按价位卖 key，A key 便宜只能调 nano-banana-pro，B key 贵但是高级版）。
+  apiKey             String?
+
+  // 成本价（我们付给上游的钱）
+  costInputPrice     Float    @default(0)
+  costOutputPrice    Float    @default(0)
+  costUnitPrice      Float    @default(0)
+
+  // 售价（用户扣费）
+  sellInputPrice     Float    @default(0)
+  sellOutputPrice    Float    @default(0)
+  sellUnitPrice      Float    @default(0)
+
+  priority           Int      @default(100)          // 越小越优先
+  enabled            Boolean  @default(true)
+  enableFallback     Boolean  @default(true)         // 失败时允许回退到下一条渠道
+
+  notes              String?                         // 管理员备注，如 "成本待核对"
+
+  usages             Usage[]
+  tasks              Task[]
+  apiKeyBindings     ApiKeyChannelBinding[]
+  optionPrices       ChannelOptionPrice[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([modelId, upstreamId, name])
+  @@index([modelId, enabled, priority])
+}
+
+/// 渠道下的参数选项级定价覆盖。
+/// 典型场景：同一把 key、同一渠道，用户选 imageSize=1K / 2K / 4K 时计费价不同。
+/// 查找优先级：对于在 OPTION_PRICING_KEYS 内的 paramKey，按顺序查 ChannelOptionPrice；
+/// 命中 enabled=true 的记录 → 用它的 costUnitPrice/sellUnitPrice；
+/// 没命中 → 用渠道本身的 sellUnitPrice/costUnitPrice（基础价）。
+model ChannelOptionPrice {
+  id             String   @id @default(cuid())
+  channelId      String
+  channel        Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  paramKey       String                     // e.g. "imageSize"
+  optionValue    String                     // e.g. "4K"
+  costUnitPrice  Float                      // 绝对价：成本
+  sellUnitPrice  Float                      // 绝对价：售价
+  enabled        Boolean  @default(true)
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([channelId, paramKey, optionValue])
+  @@index([channelId, enabled])
+}
+
+model Model {
+  id             String   @id @default(cuid())
+  slug           String   @unique     // gpt-4o / claude-3.5-sonnet / gemini-1.5-pro / flux-pro / runway-gen3
+  name           String
+  providerId     String
+  provider       Provider @relation(fields: [providerId], references: [id])
+  type           String                // chat | image | video | embedding | audio
+  description    String?
+  contextLength  Int?                  // chat 模型上下文长度
+  tags           String?               // 逗号分隔："推荐,旗舰"
+  enabled        Boolean  @default(true)
+
+  // 计费（元为单位）
+  inputPrice     Float    @default(0)  // 每 1K tokens
+  outputPrice    Float    @default(0)  // 每 1K tokens
+  unitPrice      Float    @default(0)  // 图片/视频：每次/每秒
+  unit           String?               // "image" | "second" | "1K tokens"
+
+  usages         Usage[]
+  tasks          Task[]
+  mediaAssets    MediaAsset[]
+  channels       Channel[]
+  createdAt      DateTime @default(now())
+
+  @@index([type, enabled])
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // recharge | consume | refund | commission
+  amount    Float    // 正数 = 入账，负数 = 扣费
+  balance   Float    // 交易后余额
+  note      String?
+  meta      String?  // JSON
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Usage {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelId      String
+  model        Model    @relation(fields: [modelId], references: [id])
+  channelId    String?
+  channel      Channel? @relation(fields: [channelId], references: [id])
+  type         String   // chat | image | video
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  units        Float    @default(0)   // 图片张数 / 视频秒数
+  cost         Float    @default(0)   // 用户扣费（元）= 售价
+  realCost     Float    @default(0)   // 我们付给上游的成本（元）
+  status       String   @default("success") // success | failed | pending
+  latencyMs    Int?
+  meta         String?  // JSON（prompt 摘要、输出 id 等）
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([modelId, createdAt])
+  @@index([channelId, createdAt])
+}
+
+model Commission {
+  id         String   @id @default(cuid())
+  userId     String                         // 获得佣金的人（邀请人）
+  user       User     @relation("CommissionUser", fields: [userId], references: [id])
+  sourceId   String                         // 产生消费的人（被邀请人）
+  source     User     @relation("CommissionSource", fields: [sourceId], references: [id])
+  amount     Float                          // 佣金额（元）
+  rate       Float                          // 比例
+  baseAmount Float                          // 对应消费金额
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// 用户级 key-value 偏好（per-user override of platform defaults）
+/// 当前用途：解说漫剧导演台的私有管线（comic_pipeline_*）
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+/// 用户创建的克隆音色（目前对接 minimax/speech-2.8 等音色复刻模型）
+/// 流程：上传样本 → 上游返回 voice_id → 落一行（扣 clone 费）→ 首次合成时激活（再扣激活费）
+model VoiceClone {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelSlug      String                          // 例如 speech-2.8
+  channelId      String?                         // 创建时使用的渠道（便于下次合成时沿用同一把 key）
+  voiceId        String   @unique                // 上游返回的真实 voice_id
+  name           String                          // 展示给用户的名字（用户输入的，未带前缀）
+  upstreamName   String?                         // 真正写到上游的名字（做了用户隔离前缀）
+  audioSampleUrl String?                         // 原始样本 URL（如用户提供）
+  demoAudio      String?                         // 上游返回的试听音频
+  isActivated    Boolean  @default(false)        // 首次合成后置 true，之后不再收激活费
+  activatedAt    DateTime?
+  cloneCost      Float    @default(0)            // 本次创建扣的钱
+  activationCost Float    @default(0)            // 首次合成的激活费
+  expiresAt      DateTime?                       // 上游返回的到期时间（7 天；激活后通常变永久）
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([modelSlug])
+}
+
+// ============================================================
+// AI 漫剧 · S2.0 — 智能多帧融合智能体
+//
+// 流水线 11 步：故事分析 → 创意发散 → 创作大纲 → 小说改编 →
+//               剧本拆解 → 主体绑定 → 分镜设计 → 分镜脚本 →
+//               关键帧 → 生成视频 → 视频合成
+//
+// - ComicProject       一个完整的漫剧项目
+// - ComicProjectStep   每一步的执行记录与产物（一对多）
+// - ComicCharacter     主体绑定阶段产生的角色卡（含参考图、音色）
+//
+// 双模式：
+//   mode=step  逐步确认 — 用户每点一次"下一步"才推进 currentStep
+//   mode=auto  智能托管 — 后台 runner 一路跑到底
+//
+// 状态机：
+//   project.status: draft -> running -> paused | failed | completed
+//   step.status:    pending -> running -> succeeded | failed | skipped
+//
+// 计费：每步独立扣费（chargeUsage），所有 step.cost 之和 = project.totalCost
+// ============================================================
+
+model ComicProject {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title         String                       // 剧集标题（用户可改，默认从首段 prompt 截取）
+  initialPrompt String                       // 用户最初输入的故事描述
+  mode          String   @default("auto")    // step | auto
+  status        String   @default("draft")   // draft | running | paused | failed | completed
+  currentStep   String?                      // step.key，当前/下一步要执行的步骤
+  progress      Int      @default(0)         // 0-100
+
+  // 全局参数（创建时快照，影响所有子步骤）
+  resolution    String   @default("480P")    // 480P | 720P | 1080P
+  aspectRatio   String   @default("16:9")
+  speedTier     String   @default("fast")    // fast | balance | quality
+  style         String?                      // 画风描述（如"国风水墨"），用户输入自由文本
+  /// 视觉风格预设 slug，如 "hk_neon" / "guofeng" / "anime90s"
+  /// 选了之后，所有图像生成都自动拼接对应风格 prompt
+  visualStyle   String?
+  language      String   @default("zh")
+
+  // 选用的模型 slug（来自 ComicPipeline，创建时快照，避免后续被修改影响重跑）
+  llmSlug       String
+  imageSlug     String
+  videoSlug     String
+  ttsSlug       String
+
+  // 累计花费 / 预估
+  estimatedCost Float    @default(0)         // 创建时按全片估算的总价
+  totalCost     Float    @default(0)         // 实际累计扣费
+
+  /// 智能托管策略 JSON（AutoRunPolicy）：
+  ///   { steps: { stepKey: bool }, retry: { chat,image,video }, videoTargetPerShot }
+  /// 用户在开启托管前的弹窗里勾选；mode=step 时通常为空
+  autoPolicy    String?
+
+  // 终态产物
+  finalVideoUrl String?                      // 视频合成完成后的成片 URL
+  coverUrl      String?
+
+  errorMessage  String?
+
+  steps         ComicProjectStep[]
+  characters    ComicCharacter[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+/// 每一步的执行记录。同一 (projectId, stepKey) 唯一。
+model ComicProjectStep {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     ComicProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// 步骤 key，固定枚举之一（见 lib/comic-agent/steps.ts STEP_KEYS）
+  /// story_analysis | ideation | outline | novel_adapt | script_breakdown |
+  /// subject_binding | storyboard_design | storyboard_script |
+  /// keyframes | video_gen | video_compose
+  stepKey     String
+  stepIndex   Int                            // 0-10，便于排序
+
+  status      String   @default("pending")   // pending | running | succeeded | failed | skipped
+  progress    Int      @default(0)
+
+  /// 输入快照（来自上一步的产物 + 用户在该步上做的微调）JSON 字符串
+  input       String?
+  /// 该步主输出（文本 / JSON 结构）
+  output      String?
+  /// 媒体产物 URL 列表（关键帧每帧一张图、视频每帧一段视频、合成步是单条成片）
+  /// JSON array of { url, type, durationSec?, width?, height?, sceneIdx? }
+  artifacts   String?
+
+  /// 该步使用的 modelSlug 与渠道（runner 决定，可能与项目快照不同：例如人工换了模型）
+  modelSlug   String?
+  channelId   String?
+  /// 上游异步任务 id（视频/explain-comic 类需要轮询）
+  externalId  String?
+
+  cost        Float    @default(0)            // 用户扣费
+  realCost    Float    @default(0)            // 实际成本
+  latencyMs   Int?
+
+  errorMessage String?
+
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, stepKey])
+  @@index([projectId, stepIndex])
+  @@index([status])
+  @@index([externalId])
+}
+
+/// 主体绑定阶段产生的角色/场景/道具/技能卡
+model ComicCharacter {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      ComicProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// character | scene | prop | skill
+  type         String
+  name         String                         // ≤ 12 字
+  description  String?                        // 外观/性格/年龄等
+  /// 主参考图（卡片左侧大图，第一张/最优一张）
+  referenceUrl String?
+  /// 多角度参考图集合，JSON array of url（正面/侧面/全身/不同服装等）
+  /// 留 null 时回退用 referenceUrl 单图
+  referenceUrls String?
+  /// 名字是否被用户锁定。锁定后任何重生成/重提取都不会覆盖 name
+  nameLocked   Boolean  @default(false)
+
+  voiceId      String?                        // 角色音色 id（绑定到 VoiceClone.voiceId）
+  /// 用于跨镜头一致性的"视觉锚"短语（喂给图像模型的固定描述前缀）
+  visualAnchor String?
+
+  /// 来源全局资产 id：非 null 表示这是从用户资产库复用的，不需要重新生图
+  sourceAssetId String?
+  /// 生图状态：pending（待生）| analyzing（生成中）| ready（已就绪）| failed（失败）
+  /// "复用" 资产创建时直接 ready；新建资产从 pending → analyzing → ready
+  genStatus    String   @default("pending")
+  /// 生成失败时的错误信息（用于 UI 提示）
+  genError     String?
+
+  orderIdx     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([projectId, type])
+  @@index([sourceAssetId])
+}
+
+// ============================================================
+// AI 漫剧 · S3.0（comic-v3）
+//
+// 设计目标（与 S2.0 区别）：
+//   - 交互式：每一步可暂停 awaiting_user，让用户从多候选里挑一个 / 编辑产物 / 重跑
+//   - 多候选：candidates 字段保存 LLM 一次产出的 N 个方案，pickedCandidateId 记录用户选了哪个
+//   - 富产物：output 同时存 JSON 和 MD 摘要（前端可读）
+//   - 严格 Schema：每步用 zod 校验产物
+//
+// 与 v2 完全隔离的目录：src/lib/comic-v3 / api/comic-v3 / dashboard/comic-v3
+// ============================================================
+
+/// AI 漫剧 v3 项目主表
+model ComicProjectV3 {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title         String
+  initialPrompt String
+
+  /// auto（连跑直到下一个 needsConfirm）/ step（每步都暂停）
+  mode          String   @default("auto")
+  /// draft | running | awaiting_user | failed | completed | paused
+  status        String   @default("draft")
+  /// 当前/下一步的 stepKey
+  currentStep   String?
+  progress      Int      @default(0)
+
+  // 全局参数快照
+  resolution    String   @default("720P")
+  aspectRatio   String   @default("16:9")
+  speedTier     String   @default("balance")
+  style         String?
+  visualStyle   String?
+  language      String   @default("zh")
+
+  // 模型管线快照
+  llmSlug       String
+  imageSlug     String
+  videoSlug     String
+  ttsSlug       String
+
+  /// 用户在创建时选择的"图像套餐" slug（见 src/lib/comic-v3/image-presets.ts）
+  /// default=跟随系统 / balanced / quality / experimental
+  /// imageSlug 字段已经存了实际用到的 slug，这个字段仅用于"创建时选了哪个套餐"的展示
+  imagePreset   String   @default("default")
+
+  // 启用的扩展（JSON: { bgm: bool, subtitles: bool, multiVoice: bool }）
+  extensions    String?
+
+  estimatedCost Float    @default(0)
+  totalCost     Float    @default(0)
+
+  /// 流水线策略 JSON（参考 v2 AutoRunPolicy，但允许更多分支策略）
+  policy        String?
+
+  finalVideoUrl String?
+  coverUrl      String?
+
+  errorMessage  String?
+
+  /// 跨进程互斥锁（CAS 字段）：
+  /// runLockId        当前持锁者 UUID；null 表示未上锁
+  /// runLockExpiresAt 锁过期时间，进程崩溃后兜底释放（持锁者每步续期）
+  runLockId        String?
+  runLockExpiresAt DateTime?
+
+  steps         ComicStepV3[]
+  assets        ComicAssetV3[]
+  shots         ComicShotV3[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+/// AI 漫剧 v3 单步执行记录
+model ComicStepV3 {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        ComicProjectV3 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  stepKey        String
+  stepIndex      Int
+
+  /// pending | running | awaiting_user | succeeded | failed | skipped
+  /// awaiting_user：runner 已产出多个候选，等待用户 pick / edit
+  status         String   @default("pending")
+  progress       Int      @default(0)
+
+  /// 候选列表 JSON：[{ id, kind, data, mdSummary?, artifacts?[] }, ...]
+  /// 单候选场景（如 outline）也用此结构（candidates.length === 1）
+  candidates     String?
+  /// 用户从 candidates 里选的那一个的 id；未选时为 null
+  pickedCandidateId String?
+
+  /// 用户在 awaiting_user 阶段对所选候选做的字段级编辑（JSON Patch 风格）
+  userEdits      String?
+
+  /// 主输出（pickedCandidate.data 落定后的结构），下游 step 直接读这里
+  /// 与 v2 的 output 字段语义一致
+  output         String?
+  /// 用于前端展示的 Markdown 摘要
+  outputMd       String?
+  /// 媒体产物 [{ url, type, ... }]
+  artifacts      String?
+
+  modelSlug      String?
+  channelId      String?
+  externalId     String?
+
+  cost           Float    @default(0)
+  realCost       Float    @default(0)
+  latencyMs      Int?
+
+  /// 该 step 已尝试的运行次数（重跑不重置 step.id，递增此字段）
+  runCount       Int      @default(0)
+
+  errorMessage   String?
+
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([projectId, stepKey])
+  @@index([projectId, stepIndex])
+  @@index([status])
+}
+
+/// AI 漫剧 v3 资产（角色 / 场景 / 道具）— 比 v2 ComicCharacter 多了多候选语义
+model ComicAssetV3 {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      ComicProjectV3 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// character | scene | prop
+  type         String
+  name         String
+  description  String?
+
+  /// 多张候选参考图 [{ url, prompt, modelSlug }]
+  candidates   String?
+  /// 用户挑中的候选 url（来自 candidates[i].url）
+  pickedUrl    String?
+
+  voiceId      String?
+  /// 紧凑视觉锚（≤50 词），后续每张分镜图前缀复用
+  visualAnchor String?
+  /// 本资产生图时使用的完整 imagePrompt（assets_plan 步产出，可被用户编辑）
+  imagePrompt  String?
+  /// 负面 prompt（assets_plan 步产出，可被用户编辑）
+  negativePrompt String?
+  /// 单 asset 的图像模型覆盖；null 表示用项目快照里的 imageSlug
+  /// 用于"某个角色 Nano Banana 出不了好图，单独换 MJ 重跑"的场景
+  imageModelOverride String?
+
+  /// pending | planned | generating | awaiting_pick | ready | failed
+  /// planned：assets_plan 已写入 imagePrompt，但还未渲染图像
+  genStatus    String   @default("pending")
+  genError     String?
+
+  orderIdx     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([projectId, type])
+}
+
+/// AI 漫剧 v3 分镜（一个分镜 = 一张关键帧 + 元数据）
+/// storyboard 步骤先 LLM 推导出所有 shot 元数据 + imagePrompt，再逐张生图
+model ComicShotV3 {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      ComicProjectV3 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// 镜号，从 1 开始连续
+  shotIndex    Int
+  /// 对应剧本场景索引
+  sceneIndex   Int
+
+  /// wide | medium | close | extreme_close | over_shoulder
+  shotType     String
+  /// static | pan | zoom_in | zoom_out | dolly | tracking
+  cameraMove   String
+  /// 该镜时长（秒）
+  durationSec  Float
+
+  /// 用于关键帧生成的图像 prompt（含视觉锚）
+  imagePrompt  String
+  /// 用于图生视频的运动 prompt 提示（短句）
+  motionHint   String   @default("")
+  /// 该镜对白
+  dialogue     String   @default("")
+  /// 引用 ComicAssetV3.id 列表（JSON array）
+  assetIds     String?
+
+  /// 单镜的图像模型覆盖；null 表示用项目快照
+  imageModelOverride String?
+  /// 负面 prompt（可由用户编辑）
+  negativePrompt String?
+
+  /// 关键帧 URL（生图成功后写入）
+  keyframeUrl  String?
+
+  /// pending | generating | ready | failed
+  genStatus    String   @default("pending")
+  genError     String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([projectId, shotIndex])
+  @@index([projectId])
+}
+
+// ============================================================
+// 电商一键出图（ecom-image）
+//
+// 智能体定位：用户上传商品图 + 描述 → AI 7 节点工作流 → 批量出成图
+//
+// 7 节点（与 src/lib/ecom-image/nodes.ts NODE_KEYS 对应）：
+//   01 product_analysis    商品智能分析 + 出图类型推荐勾选
+//   02 supplement_info     资料补全（AI 判定 skip 或 多轮 QA）
+//   03 image_analysis      用户上传图独立解析（每图一份产物）
+//   04 plan_creation       出图方案规划（按类型分组的策略 + 图清单）
+//   05 model_selection     生图模型选择（锁定后续）
+//   06 prompt_generation   每张图的最终提示词生成（可编辑/AI 重写）
+//   07 image_generation    批量出图 + 每方案 N 张候选 + 挑优 + 批量下载
+//
+// 状态机（节点级 EcomProjectNode.status）：
+//   pending → running → awaiting_review → confirmed
+//                    ↘  failed
+//                    ↘  rejected → 重新 run（带 feedback）
+//                    ↘  skipped
+//
+// 项目级（EcomProject.status）：
+//   draft | running | awaiting_user | completed | failed | paused
+//
+// 与 comic-v3 的关键差异：
+//   - 节点 01-06 是单产物 + 用户编辑/反馈重生模式（不复用 candidates 命名）
+//   - 节点 07 单 plan 多张图候选用独立表 EcomGeneratedImage 表达
+//
+// 目录隔离：src/lib/ecom-image / api/ecom-image / dashboard/ecom-image
+// ============================================================
+
+/// 电商一键出图项目主表
+model EcomProject {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 项目标题（节点 01 第一次 run 时由 AI 生成 1 句话总结写入；用户可改）
+  title         String
+  /// 用户最初输入的商品描述长文本
+  initialPrompt String
+  /// 用户最初上传的图片数（冗余字段，便于列表页显示）
+  initialImageCount Int  @default(0)
+
+  /// draft | running | awaiting_user | completed | failed | paused
+  status        String   @default("draft")
+  /// 当前活跃节点的 nodeKey；completed 时指向 image_generation
+  currentNode   String?
+  /// 0-100，按已 confirmed 节点数计算
+  progress      Int      @default(0)
+
+  /// 节点 05 锁定的生图模型 slug（创建时为 null，节点 05 confirmed 后写入）
+  imageModelSlug String?
+  /// 节点 05 选定的提示词语言：zh | en
+  promptLanguage String  @default("zh")
+
+  /// 节点 06+ 的"每方案出图数"覆盖；null 时使用用户级 EcomAutoConfig.imagesPerPlan
+  imagesPerPlan Int?
+
+  /// 累计扣费 / 预估
+  estimatedCost Float    @default(0)
+  totalCost     Float    @default(0)
+
+  /// 节点 07 全部完成后，打包下载用的 zip URL（COS）
+  finalZipUrl   String?
+  /// 项目封面（节点 07 第一张挑中的图）
+  coverUrl      String?
+
+  errorMessage  String?
+
+  /// 跨进程互斥锁（与 comic-v3 同语义，给后台 worker 用）
+  runLockId        String?
+  runLockExpiresAt DateTime?
+
+  nodes           EcomProjectNode[]
+  sourceImages    EcomSourceImage[]
+  imageTypes      EcomImageType[]
+  imagePlans      EcomImagePlan[]
+  generatedImages EcomGeneratedImage[]
+  messages        EcomMessage[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+/// 项目节点（每项目固定 7 行，每节点一行）
+/// 状态机：pending → running → awaiting_review → confirmed | rejected | skipped | failed
+model EcomProjectNode {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     EcomProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// 节点 key，固定 7 个之一（lib/ecom-image/nodes.ts NODE_KEYS）：
+  /// product_analysis | supplement_info | image_analysis | plan_creation
+  /// model_selection  | prompt_generation | image_generation
+  nodeKey     String
+  /// 0-6，固定排序
+  nodeIndex   Int
+
+  /// pending | running | awaiting_review | confirmed | rejected | skipped | failed
+  status      String   @default("pending")
+  /// 0-100，节点内进度（节点 03/07 这种并发任务用得到；其他节点固定 0/100）
+  progress    Int      @default(0)
+
+  /// 子阶段（前端进度条展示，纯装饰）：调度 | 思考 | 构建 | 完成
+  /// 各节点的标签集可能不同，由 runner 写入；UI 直接渲染
+  runStage    String?
+  /// 当前 fancy loading 文案，例如"正在深度分析出图规划…"
+  runStageText String?
+
+  /// 节点产物 JSON（每节点 schema 不同，详见 lib/ecom-image/schemas.ts）
+  /// 例：
+  ///   product_analysis -> { reportMd, recommendedTypes: [...] }
+  ///   plan_creation    -> { groups: [{typeId, strategy, plans:[...]}] }
+  ///   prompt_generation-> { prompts: [{planId, prompt, language}] }
+  output      String?
+  /// 用户在 awaiting_review 阶段提的反馈（用于 rejected → 重新 run）
+  feedback    String?
+  /// 已尝试的运行次数（rejected 重生不重置 id，递增此字段）
+  runCount    Int      @default(0)
+  /// 本节点最近一次实际调用的视觉/LLM 模型 slug（用户每次 run 时可指定）
+  usedModelSlug String?
+  /// 失败/重试错误信息（最近一次）
+  errorMessage String?
+
+  startedAt   DateTime?
+  confirmedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, nodeKey])
+  @@index([projectId, nodeIndex])
+  @@index([status])
+}
+
+/// 用户上传的原始商品图（节点 03 分析的对象，节点 06/07 可作垫图）
+model EcomSourceImage {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     EcomProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// 上传到 COS 的 URL（COS 不可用时是 /uploads/ecom-image/... 本地兜底路径）
+  url         String
+  /// 原文件名（仅展示）
+  filename    String?
+  /// 文件大小（字节，可选）
+  sizeBytes   Int?
+  width       Int?
+  height      Int?
+
+  /// 节点 03 分析产出 ===
+  /// AI 生成的标题（用户可编辑）
+  title       String?
+  /// AI 生成的详细描述（用户可编辑）
+  description String?
+  /// pending | running | done | failed | excluded
+  /// excluded：用户在节点 03 选择"不分析这张"，从产物中剔除但保留原图
+  analyzeStatus String @default("pending")
+  /// 已分析尝试次数
+  analyzeRunCount Int  @default(0)
+  analyzeError String?
+
+  orderIdx    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId, orderIdx])
+}
+
+/// 节点 01 产出的"出图类型"（推荐池）+ 节点 04 的"分类组"
+/// 同一项目内 typeKey 唯一；节点 01 confirmed 时把用户勾选的置为 selected=true
+model EcomImageType {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     EcomProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// 类型 key（AI 生成的稳定 slug，如 main_image / white_bg / poster_high_end）
+  /// 用户手动添加的自定义类型 key 形如 custom_xxxxx
+  typeKey     String
+  /// 展示名（"商品主图（多角度轮播）"）
+  name        String
+  /// 一段描述（卡片副标题）
+  description String?
+
+  /// 优先级标签 JSON 数组（AI 自由打 tag）：["必选","高转化"]
+  priorityTags String?
+  /// 场景标签 JSON 数组（AI 自由打 tag）：["平台必需","品牌建设"]
+  sceneTags   String?
+  /// 一句话价值定位（"点击率提升关键"）
+  valueChip   String?
+  /// 平台适配 JSON 数组：["全平台","淘宝/天猫","京东"]
+  platforms   String?
+  /// AI 给的"为什么推荐这种类型"长说明
+  reasoning   String?
+  /// AI 评级：win | mid | low（前端显示徽章 赢/中/低）
+  rating      String?
+
+  /// 来源：ai_recommended | user_custom
+  origin      String   @default("ai_recommended")
+
+  /// 节点 01 用户勾选状态
+  selected    Boolean  @default(false)
+  /// 节点 04 规划该分类时计划的图数（用于 UI 显示 "📷 N 张"）
+  plannedCount Int     @default(0)
+
+  /// 节点 04 的分类策略 JSON：{ summary, thinking, colorPlan, lighting, composition }
+  strategy    String?
+
+  orderIdx    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  imagePlans  EcomImagePlan[]
+
+  @@unique([projectId, typeKey])
+  @@index([projectId, selected])
+}
+
+/// 节点 04 的单张图规划（用户可增删/编辑/AI 加图）
+model EcomImagePlan {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     EcomProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  imageTypeId String
+  imageType   EcomImageType @relation(fields: [imageTypeId], references: [id], onDelete: Cascade)
+
+  /// 在分类内的序号（1 起）
+  idx         Int
+  /// 单张图标题（"租借柜正面标准主图"）
+  title       String
+  /// 单张图画面描述（构图、光线、配色等）
+  description String
+
+  /// 用户引用的垫图 ID 列表 JSON：[{type:"source"|"generated", id}]
+  /// 节点 04 可预选；节点 06/07 可改
+  referenceIds String?
+
+  /// 宽高比（自由字符串）："1:1" | "3:4" | "4:3" | "16:9" | "9:16" | "1080:720" 等
+  aspectRatio String   @default("1:1")
+
+  /// 来源标识：auto | manual | ai_added
+  /// auto = 节点 04 第一次 AI 生成时创建
+  /// manual = 用户点"+ 手动添加图片规划"
+  /// ai_added = 用户点"AI 添加图片规划"补的
+  origin      String   @default("auto")
+
+  /// 节点 06 产物 ===
+  /// 该 plan 最终的生图提示词（节点 06 写入，可被用户编辑）
+  prompt      String?
+  /// 节点 06 的负面提示词（可选）
+  negativePrompt String?
+
+  orderIdx    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  generatedImages EcomGeneratedImage[]
+
+  @@index([projectId, imageTypeId, idx])
+}
+
+/// 节点 07 实际生成的图片（一个 plan 可生成多张候选，用户挑优）
+model EcomGeneratedImage {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     EcomProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        EcomImagePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  /// 该 plan 下的候选序号（1 起；删除候选后保持稀疏，新增取 max+1）
+  candidateIdx Int
+
+  /// queued | running | done | failed
+  status      String   @default("queued")
+  /// 0-100，单图渲染进度
+  progress    Int      @default(0)
+  /// 已尝试次数（失败重试递增；上限来自 EcomAutoConfig.retryImageGen）
+  runCount    Int      @default(0)
+  errorMessage String?
+
+  /// 实际发给上游的 prompt 快照（plan.prompt 的当时值）
+  promptSnapshot String?
+  /// 实际使用的模型 slug 快照
+  modelSlugSnapshot String?
+
+  /// 生成图 URL（COS）
+  url         String?
+  /// 上游 task externalId（异步轮询）
+  externalId  String?
+
+  width       Int?
+  height      Int?
+  cost        Float    @default(0)
+  realCost    Float    @default(0)
+
+  /// 用户标记此候选为"挑中"（每个 plan 可有多张挑中，也可全不挑）
+  picked      Boolean  @default(false)
+
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([planId, candidateIdx])
+  @@index([projectId, status])
+  @@index([planId])
+  @@index([externalId])
+}
+
+/// 节点 02 多轮对话历史（仅当 AI 判定需要补资料 → QA 模式时使用）
+/// AI 判定 skip 时此表无记录；用户主动追问也写入此表（nodeKey 仍是 supplement_info）
+model EcomMessage {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     EcomProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// 仅节点 02 使用，预留 nodeKey 字段方便后续其他节点也加对话
+  nodeKey     String   @default("supplement_info")
+  /// user | assistant
+  role        String
+  /// 文本内容
+  content     String
+  /// 用户消息可附带的图片 JSON array of url
+  attachments String?
+
+  orderIdx    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([projectId, nodeKey, orderIdx])
+}
+
+/// 用户级"自动化配置"（一行 / 用户）
+/// 阶段 0~3 仅 UI 展示和保存，引擎不读；阶段 4 接入引擎实现自动确认
+model EcomAutoConfig {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 7 个节点是否自动确认（JSON）：
+  /// { product_analysis, supplement_info, image_analysis, plan_creation,
+  ///   model_selection, prompt_generation, image_generation }
+  /// 默认全 false（全人工）
+  autoConfirm String   @default("{}")
+
+  /// Chat / LLM 调用失败重试上限（每节点/每提示词等）
+  retryChat       Int  @default(5)
+  /// 单张图片生成失败重试上限
+  retryImageGen   Int  @default(5)
+  /// 每方案出图数（节点 07 单 plan 默认生成几张候选）
+  imagesPerPlan   Int  @default(2)
+
+  /// 节点 05 自动确认时使用的默认生图模型 slug（来自 Model 表）
+  defaultImageModelSlug String?
+  /// 默认提示词语言：zh | en
+  defaultPromptLanguage String @default("zh")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

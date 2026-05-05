@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.zeabur.app/zbpack.json",
+  "ignore_dockerfile": true,
+  "build_command": "npx prisma generate && npx prisma migrate deploy && next build",
+  "start_command": "next start -H 0.0.0.0 -p ${PORT:-3000}",
+  "node": {
+    "version": "20"
+  }
+}
