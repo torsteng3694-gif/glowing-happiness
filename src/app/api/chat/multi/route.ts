@@ -7,21 +7,19 @@ import { getChannelsForModel, pickChannel } from "@/lib/channels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 /**
- * 多模型协作对话
- *
+ * 多模型协作对�? *
  * Body:
  * {
- *   modelIds: string[]                 // 要并行调用的模型（2~5 个最佳）
+ *   modelIds: string[]                 // 要并行调用的模型�?~5 个最佳）
  *   messages: {role,content}[]         // 标准 OpenAI 格式
- *   fuserModelId?: string              // 指定一个"融合评审模型"；不传 = 不做融合
+ *   fuserModelId?: string              // 指定一�?融合评审模型"；不�?= 不做融合
  *   channelIdByModelId?: Record<string,string>  // 可选：每个模型指定渠道
  * }
  *
- * Response: NDJSON 流（每行一个 JSON 事件）
- *   {type:"init", turnId, models:[{id,slug,name,logo}], fuserModelId}
+ * Response: NDJSON 流（每行一�?JSON 事件�? *   {type:"init", turnId, models:[{id,slug,name,logo}], fuserModelId}
  *   {type:"delta", modelId, delta}
  *   {type:"error", modelId, error}
  *   {type:"done",  modelId, inputTokens, outputTokens, cost, latencyMs}
@@ -35,7 +33,7 @@ type Msg = { role: "system" | "user" | "assistant"; content: string };
 
 function buildFusePrompt(userQuestion: string, branches: { label: string; text: string }[]): string {
   const parts = branches
-    .map((b, i) => `【候选答案 ${String.fromCharCode(65 + i)} · ${b.label}】\n${b.text.trim() || "(模型未返回有效内容)"}`)
+    .map((b, i) => `【候选答�?${String.fromCharCode(65 + i)} · ${b.label}】\n${b.text.trim() || "(模型未返回有效内�?"}`)
     .join("\n\n");
 
   return (
@@ -43,11 +41,11 @@ function buildFusePrompt(userQuestion: string, branches: { label: string; text: 
     `你的任务：\n` +
     `1. 对比各答案，识别事实性错误、过时信息、明显幻觉；\n` +
     `2. 吸收每个答案里最有价值、最准确的部分；\n` +
-    `3. 用清晰、结构化的方式输出一个"融合后的最佳答案"；\n` +
+    `3. 用清晰、结构化的方式输出一�?融合后的最佳答�?；\n` +
     `4. 不要自我介绍、不要评价模型，只输出最终答案本身，语言风格跟随用户问题。\n\n` +
     `================ 原始用户问题 ================\n${userQuestion}\n\n` +
-    `================ 候选答案 ================\n${parts}\n\n` +
-    `================ 融合后的最佳答案 ================\n`
+    `================ 候选答�?================\n${parts}\n\n` +
+    `================ 融合后的最佳答�?================\n`
   );
 }
 
@@ -65,29 +63,29 @@ export async function POST(req: Request) {
     !Array.isArray(body.messages) ||
     body.messages.length === 0
   ) {
-    return NextResponse.json({ error: "参数错误：需要 1~6 个 modelIds 和非空 messages" }, { status: 400 });
+    return NextResponse.json({ error: "参数错误：需�?1~6 �?modelIds 和非�?messages" }, { status: 400 });
   }
 
   const messages: Msg[] = body.messages;
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUser) {
-    return NextResponse.json({ error: "messages 中需要至少一条 user 消息" }, { status: 400 });
+    return NextResponse.json({ error: "messages 中需要至少一�?user 消息" }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.id } });
-  if (!user) return NextResponse.json({ error: "用户不存在" }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "用户不存�? }, { status: 400 });
   if (user.balance <= 0) {
-    return NextResponse.json({ error: "余额不足，请先充值" }, { status: 402 });
+    return NextResponse.json({ error: "余额不足，请先充�? }, { status: 402 });
   }
 
-  // 去重、校验每个 model 都存在且是 chat
+  // 去重、校验每�?model 都存在且�?chat
   const modelIds: string[] = Array.from(new Set(body.modelIds));
   const models = await prisma.model.findMany({
     where: { id: { in: modelIds }, type: "chat" },
     include: { provider: true },
   });
   if (models.length === 0) {
-    return NextResponse.json({ error: "没有可用的 chat 模型" }, { status: 400 });
+    return NextResponse.json({ error: "没有可用�?chat 模型" }, { status: 400 });
   }
   // 按用户传进来的顺序排
   const orderedModels = modelIds
@@ -143,13 +141,11 @@ export async function POST(req: Request) {
 
       let totalCost = 0;
 
-      // 并行跑每个模型
-      const perModelResults = await Promise.all(
+      // 并行跑每个模�?      const perModelResults = await Promise.all(
         orderedModels.map(async (model) => {
           const chId = channelIdByModelId[model.id] ?? null;
           const channel = await pickChannel(model.id, chId);
-          // 每模型显式指定渠道且命中时，固定该渠道，不自动降级
-          const fallbackChannels = channel ? (chId && channel.id === chId ? [] : await getChannelsForModel(model.id)) : [];
+          // 每模型显式指定渠道且命中时，固定该渠道，不自动降�?          const fallbackChannels = channel ? (chId && channel.id === chId ? [] : await getChannelsForModel(model.id)) : [];
 
           const started = Date.now();
           let acc = "";
@@ -190,8 +186,7 @@ export async function POST(req: Request) {
 
           const latencyMs = Date.now() - started;
 
-          // 计费（失败也记 usage 但 status=failed，cost=0）
-          let cost = 0;
+          // 计费（失败也�?usage �?status=failed，cost=0�?          let cost = 0;
           try {
             const billing = await chargeUsage({
               userId: session!.id,
@@ -227,15 +222,14 @@ export async function POST(req: Request) {
 
           return {
             modelId: model.id,
-            label: `${model.name}（${model.provider.name}）`,
+            label: `${model.name}�?{model.provider.name}）`,
             text: acc,
             ok: !hadError,
           };
         }),
       );
 
-      // 融合（需要至少 2 个成功的 + 指定了 fuser）
-      const successResults = perModelResults.filter((r) => r.ok && r.text.trim().length > 0);
+      // 融合（需要至�?2 个成功的 + 指定�?fuser�?      const successResults = perModelResults.filter((r) => r.ok && r.text.trim().length > 0);
       if (fuserModel && successResults.length >= 2) {
         const fuser = fuserModel;
         emit({ type: "fuse-start", modelId: fuser.id, name: fuser.name, logo: fuser.provider.logo || "🤖" });
@@ -251,9 +245,7 @@ export async function POST(req: Request) {
           fErrMsg = "";
 
         try {
-          // 保留原始对话中的历史（去掉最后一条 user），外加一个综合 user 消息，
-          // 让 fuser 依然能看到上下文，但最后是明确的"请融合"请求。
-          const historyExceptLast = messages.slice(0, -1);
+          // 保留原始对话中的历史（去掉最后一�?user），外加一个综�?user 消息�?          // �?fuser 依然能看到上下文，但最后是明确�?请融�?请求�?          const historyExceptLast = messages.slice(0, -1);
           const fuseMessages: Msg[] = [
             ...historyExceptLast,
             { role: "user", content: fPrompt },
@@ -314,8 +306,7 @@ export async function POST(req: Request) {
         });
       }
 
-      // 读取最终余额
-      const updated = await prisma.user.findUnique({ where: { id: session!.id } });
+      // 读取最终余�?      const updated = await prisma.user.findUnique({ where: { id: session!.id } });
       emit({
         type: "all-done",
         totalCost: Math.round(totalCost * 10000) / 10000,

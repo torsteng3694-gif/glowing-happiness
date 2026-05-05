@@ -6,7 +6,7 @@ import { chargeUsage } from "@/lib/billing";
 import { resolveChannelsForCall } from "@/lib/channels";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 800;
 
 export async function POST(req: Request) {
   const pair = await authenticateRequestWithKey(req);
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   if (resolved.scoped && !resolved.primary) {
     return NextResponse.json({
       error: {
-        message: `API Key 未授权调用模型 '${model.slug}'。请在 /dashboard/apikeys 中为该 Key 绑定对应渠道。`,
+        message: `API Key 未授权调用模�?'${model.slug}'。请�?/dashboard/apikeys 中为�?Key 绑定对应渠道。`,
         type: "model_not_allowed_for_api_key",
         code: "model_not_allowed",
       },

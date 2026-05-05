@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { PDFDocument } from "pdf-lib";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 800;
 
 type PanelInput = {
   index?: number;
@@ -38,7 +38,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer> {
   } catch {
     throw new Error("图片 URL 无效");
   }
-  if (!/^https?:$/.test(u.protocol)) throw new Error("只支持 http/https 图片");
+  if (!/^https?:$/.test(u.protocol)) throw new Error("只支�?http/https 图片");
   if (isPrivateHost(u.hostname)) throw new Error("禁止访问内网图片地址");
 
   const res = await fetch(u.toString(), {
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非法" }, { status: 400 });
+    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
   }
 
   const format = normalizeFormat((body as Record<string, unknown>).format);

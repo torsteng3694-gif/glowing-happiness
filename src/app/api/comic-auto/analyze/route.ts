@@ -6,7 +6,7 @@ import { pickChannel, getChannelsForModel } from "@/lib/channels";
 import { chargeUsage } from "@/lib/billing";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 type PanelDraft = {
   index: number;
@@ -31,7 +31,7 @@ function extractJson(text: string): KeywordAnalysis {
   const obj = candidate.match(/\{[\s\S]*\}/)?.[0] || candidate;
   const parsed = JSON.parse(obj) as KeywordAnalysis;
   if (!Array.isArray(parsed.panels) || parsed.panels.length === 0) {
-    throw new Error("关键词智能体未返回有效 panels");
+    throw new Error("关键词智能体未返回有�?panels");
   }
   return parsed;
 }
@@ -46,33 +46,33 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非法" }, { status: 400 });
+    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
   }
 
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const llmModelId = typeof body.llmModelId === "string" ? body.llmModelId : "";
   const panelCount = Math.min(Math.max(parseInt(String(body.panelCount || 4), 10) || 4, 2), 8);
-  if (!prompt) return NextResponse.json({ error: "请输入漫画创意描述" }, { status: 400 });
+  if (!prompt) return NextResponse.json({ error: "请输入漫画创意描�? }, { status: 400 });
   if (!llmModelId) return NextResponse.json({ error: "请选择语言模型" }, { status: 400 });
 
   const [user, llmModel] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.id } }),
     prisma.model.findUnique({ where: { id: llmModelId }, include: { provider: true } }),
   ]);
-  if (!user) return NextResponse.json({ error: "用户不存在" }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "用户不存�? }, { status: 400 });
   if (!llmModel || llmModel.type !== "chat") {
-    return NextResponse.json({ error: "语言模型不可用" }, { status: 400 });
+    return NextResponse.json({ error: "语言模型不可�? }, { status: 400 });
   }
 
   const llmChannel = await pickChannel(llmModel.id, null);
   const llmFallbacks = llmChannel ? await getChannelsForModel(llmModel.id) : [];
 
   const system = [
-    "你是「漫画关键词智能体」，负责把用户创意拆成可生成漫画的关键词与分镜。",
-    "必须仅输出 JSON，不要输出 markdown，不要解释。",
+    "你是「漫画关键词智能体」，负责把用户创意拆成可生成漫画的关键词与分镜�?,
+    "必须仅输�?JSON，不要输�?markdown，不要解释�?,
   ].join("\n");
   const userPrompt = [
-    `将下面的创意拆解成 ${panelCount} 格漫画分镜并输出 JSON：`,
+    `将下面的创意拆解�?${panelCount} 格漫画分镜并输出 JSON：`,
     "{",
     '  "styleKeywords": ["..."],',
     '  "characterKeywords": ["..."],',
@@ -80,15 +80,15 @@ export async function POST(req: Request) {
     '  "moodKeywords": ["..."],',
     '  "cameraKeywords": ["..."],',
     '  "panels": [',
-    '    {"index":1,"title":"格标题","caption":"字幕文案","imagePrompt":"可直接用于文生图的英文提示词"}',
+    '    {"index":1,"title":"格标�?,"caption":"字幕文案","imagePrompt":"可直接用于文生图的英文提示词"}',
     "  ]",
     "}",
     "",
-    `创意：${prompt}`,
-    "约束：",
-    "- 保持人物一致性与服饰一致性",
-    "- 画面为连贯叙事",
-    "- imagePrompt 使用英文，包含角色、环境、光线、构图、镜头信息",
+    `创意�?{prompt}`,
+    "约束�?,
+    "- 保持人物一致性与服饰一致�?,
+    "- 画面为连贯叙�?,
+    "- imagePrompt 使用英文，包含角色、环境、光线、构图、镜头信�?,
   ].join("\n");
 
   const chatStart = Date.now();
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     }
   } catch (e) {
     return NextResponse.json(
-      { error: `关键词智能体调用失败：${e instanceof Error ? e.message : String(e)}` },
+      { error: `关键词智能体调用失败�?{e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
     },
     drafts: (analysis.panels || []).slice(0, panelCount).map((x, i) => ({
       index: x.index || i + 1,
-      title: x.title || `第${i + 1}格`,
+      title: x.title || `�?{i + 1}格`,
       caption: x.caption || "",
       imagePrompt: x.imagePrompt || "",
     })),

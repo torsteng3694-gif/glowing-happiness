@@ -8,7 +8,7 @@ import { rewriteLocalRefsToBase64 } from "@/lib/media-ref";
 import { saveMediaAssets } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
-export const maxDuration = 300; // Vercel Hobby 上限
+export const maxDuration = 800; // Vercel Hobby 上限
 
 type PanelDraft = {
   index: number;
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非法" }, { status: 400 });
+    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
   }
 
   const imageModelId = typeof body.imageModelId === "string" ? body.imageModelId : "";
@@ -35,16 +35,16 @@ export async function POST(req: Request) {
   const drafts = Array.isArray(body.drafts) ? (body.drafts as PanelDraft[]) : [];
   if (!imageModelId) return NextResponse.json({ error: "请选择图片模型" }, { status: 400 });
   if (drafts.length < 2 || drafts.length > 8) {
-    return NextResponse.json({ error: "分镜草案数量必须在 2~8 之间" }, { status: 400 });
+    return NextResponse.json({ error: "分镜草案数量必须�?2~8 之间" }, { status: 400 });
   }
 
   const [user, imageModel] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.id } }),
     prisma.model.findUnique({ where: { id: imageModelId }, include: { provider: true } }),
   ]);
-  if (!user) return NextResponse.json({ error: "用户不存在" }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "用户不存�? }, { status: 400 });
   if (!imageModel || imageModel.type !== "image") {
-    return NextResponse.json({ error: "图片模型不可用" }, { status: 400 });
+    return NextResponse.json({ error: "图片模型不可�? }, { status: 400 });
   }
 
   const imageChannel = await pickChannel(imageModel.id, null);
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
         imageFallbacks,
       );
       const url = img.images[0]?.url;
-      if (!url) throw new Error("图片模型未返回 URL");
+      if (!url) throw new Error("图片模型未返�?URL");
       if (!anchorRefUrl) anchorRefUrl = url;
       const billing = await chargeUsage({
         userId: user.id,
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
       prompt: combinedPrompt,
       params: {
         source: "comic-auto:render",
-        sourceLabel: "自动漫画智能体",
+        sourceLabel: "自动漫画智能�?,
         batchId,
         aspectRatio,
         panelCount: drafts.length,

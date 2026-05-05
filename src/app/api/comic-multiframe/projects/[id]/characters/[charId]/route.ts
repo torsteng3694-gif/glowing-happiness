@@ -6,7 +6,7 @@ import { anglesForType, getStylePrefix } from "@/lib/comic-agent/visual-styles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 async function loadOwned(userId: string, projectId: string, charId: string) {
   const c = await prisma.comicCharacter.findUnique({

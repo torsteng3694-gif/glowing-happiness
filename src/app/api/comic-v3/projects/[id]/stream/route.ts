@@ -13,7 +13,7 @@ import { isProjectRunningV3 } from "@/lib/comic-v3/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // Vercel Hobby 上限 300s；Pro 升级后可改回 1800
+export const maxDuration = 800; // Vercel Hobby 上限 300s；Pro 升级后可改回 1800
 
 export async function GET(
   _req: Request,

@@ -1,5 +1,5 @@
 /**
- * 从剧本 LLM 抽取资产清单（角色 / 场景 / 道具）
+ * 从剧�?LLM 抽取资产清单（角�?/ 场景 / 道具�?
  *
  * POST /api/comic/assets/extract
  *   body: { script: string, style?: string }
@@ -12,7 +12,7 @@
  *     cost: number, balance: number,
  *   }
  *
- * 用 user 当前 comic_pipeline.llmSlug 来跑。
+ * �?user 当前 comic_pipeline.llmSlug 来跑�?
  */
 
 import { NextResponse } from "next/server";
@@ -25,13 +25,13 @@ import { getUserComicPipeline } from "@/lib/comic-pipeline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 800;
 
 const SYSTEM_PROMPT = `You are a comic-explain video director assistant.
 TASK: Read the user's script and extract three groups of reusable visual assets:
-  1. characters  – named persons / creatures
-  2. scenes      – distinct locations / environments
-  3. props       – important interactable objects, weapons, artifacts
+  1. characters  �?named persons / creatures
+  2. scenes      �?distinct locations / environments
+  3. props       �?important interactable objects, weapons, artifacts
 
 CRITICAL OUTPUT RULES (违反视为失败):
 - Reply with NOTHING but a single valid JSON object. No prefix, no suffix, no markdown, no explanations, no code fences.
@@ -41,41 +41,41 @@ JSON schema:
 {
   "characters": [
     {
-      "name":         "string ≤ 10 chars (中文优先)",
-      "description":  "string – 外貌 / 性格 / 服饰 / 年龄等关键描述",
-      "imagePrompt":  "string – 适合用于角色立绘 / 三视图生成的中文提示词，<= 200 字"
+      "name":         "string �?10 chars (中文优先)",
+      "description":  "string �?外貌 / 性格 / 服饰 / 年龄等关键描�?,
+      "imagePrompt":  "string �?适合用于角色立绘 / 三视图生成的中文提示词，<= 200 �?
     }
   ],
   "scenes": [
     {
-      "name":         "string ≤ 10 chars",
-      "description":  "string – 时代 / 氛围 / 关键视觉元素",
-      "imagePrompt":  "string – 适合用于场景图生成的中文提示词"
+      "name":         "string �?10 chars",
+      "description":  "string �?时代 / 氛围 / 关键视觉元素",
+      "imagePrompt":  "string �?适合用于场景图生成的中文提示�?
     }
   ],
   "props": [
     {
-      "name":         "string ≤ 10 chars",
-      "description":  "string – 形态 / 材质 / 用途",
-      "imagePrompt":  "string – 适合用于道具图生成的中文提示词"
+      "name":         "string �?10 chars",
+      "description":  "string �?形�?/ 材质 / 用�?,
+      "imagePrompt":  "string �?适合用于道具图生成的中文提示�?
     }
   ]
 }
 
 Content rules:
 - Avoid duplicates; each asset only once.
-- 角色必须出场被叫到名字（含旁白/Narrator）才列入；只在背景一闪而过的不要列。
-- 场景至少要出现剧情；同一地点不同时间合并为一个。
-- 道具：优先关键武器、法宝、剧情触发物、饰品。普通日用物不列。
-- imagePrompt 不要带画风字段（画风由系统拼接），其它细节越具体越好。
-- 不超过：characters ≤ 12，scenes ≤ 10，props ≤ 10。
+- 角色必须出场被叫到名字（含旁�?Narrator）才列入；只在背景一闪而过的不要列�?
+- 场景至少要出现剧情；同一地点不同时间合并为一个�?
+- 道具：优先关键武器、法宝、剧情触发物、饰品。普通日用物不列�?
+- imagePrompt 不要带画风字段（画风由系统拼接），其它细节越具体越好�?
+- 不超过：characters �?12，scenes �?10，props �?10�?
 
 Output: ONLY the JSON. Begin with { and end with }.`;
 
 function buildUserPrompt(script: string, style?: string): string {
   const lines: string[] = [];
-  if (style) lines.push(`视频风格：${style}`);
-  lines.push("剧本原文：", script);
+  if (style) lines.push(`视频风格�?{style}`);
+  lines.push("剧本原文�?, script);
   return lines.join("\n");
 }
 
@@ -111,7 +111,7 @@ function extractJson(s: string): unknown {
     const r = tryParse(slice) ?? tryParse(cleanupJsonLike(slice));
     if (r !== null) return r;
   }
-  throw new Error("LLM 返回内容无法解析为 JSON");
+  throw new Error("LLM 返回内容无法解析�?JSON");
 }
 
 type Item = { name: string; description: string; imagePrompt: string };
@@ -144,12 +144,12 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非法" }, { status: 400 });
+    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
   }
   const script = typeof body.script === "string" ? body.script : "";
   const cpLen = [...script].length;
   if (cpLen < 30 || cpLen > 5000) {
-    return NextResponse.json({ error: "script 必须 30-5000 字" }, { status: 400 });
+    return NextResponse.json({ error: "script 必须 30-5000 �? }, { status: 400 });
   }
   const style = typeof body.style === "string" ? body.style.slice(0, 30) : undefined;
 
@@ -211,7 +211,7 @@ export async function POST(req: Request) {
     buffer = await callLLM();
   } catch (e) {
     return NextResponse.json(
-      { error: `LLM 调用失败：${e instanceof Error ? e.message : String(e)}` },
+      { error: `LLM 调用失败�?{e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }

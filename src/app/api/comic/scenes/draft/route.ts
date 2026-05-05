@@ -3,23 +3,23 @@
  *
  * POST /api/comic/scenes/draft
  *   body: {
- *     script: string,         // 必填，原始剧本文本
- *     style?: string,         // 风格描述，例如 "2D动画" / "真人写实"
- *     targetSceneCount?: number, // 期望分镜数；不传则 LLM 自行决定
- *     characters?: { name: string; description?: string }[], // 可选，已有的角色清单（让 LLM 复用名字）
+ *     script: string,         // 必填，原始剧本文�?
+ *     style?: string,         // 风格描述，例�?"2D动画" / "真人写实"
+ *     targetSceneCount?: number, // 期望分镜数；不传�?LLM 自行决定
+ *     characters?: { name: string; description?: string }[], // 可选，已有的角色清单（�?LLM 复用名字�?
  *   }
  *
  * 返回 { scenes: SceneDraft[], characters: { name, description }[] }
  *
- * SceneDraft 结构：
+ * SceneDraft 结构�?
  *   {
  *     index: number,             // 1-based
- *     description: string,       // 画面描述（用于 image / video prompt）
+ *     description: string,       // 画面描述（用�?image / video prompt�?
  *     dialog: string,            // 台词（可空字符串，表示纯画面无对白）
- *     speaker?: string,          // 说话角色名（dialog 非空时建议给）
+ *     speaker?: string,          // 说话角色名（dialog 非空时建议给�?
  *     emotion?: string,          // 情绪 hint
- *     suggestedDurationSec?: number, // 推荐时长（5/8/10）
- *     transitionHint?: string,   // 与下一镜的转场提示，用于尾帧生成
+ *     suggestedDurationSec?: number, // 推荐时长�?/8/10�?
+ *     transitionHint?: string,   // 与下一镜的转场提示，用于尾帧生�?
  *   }
  */
 
@@ -33,12 +33,12 @@ import { getUserComicPipeline } from "@/lib/comic-pipeline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 800;
 
 const SYSTEM_PROMPT = `You are a comic-explain video director assistant.
 Task: split the user-provided script into per-shot "scenes" that can be sent to image and video models one by one.
 
-CRITICAL OUTPUT RULES (违反则视为失败):
+CRITICAL OUTPUT RULES (违反则视为失�?:
 1. Reply with NOTHING but a single valid JSON object. No prefix, no suffix, no markdown, no explanations, no code fences.
 2. Use double quotes for ALL strings. Never trailing commas. Never comments.
 3. All field names must match exactly (case-sensitive).
@@ -74,42 +74,42 @@ function buildUserPrompt(opts: {
   characters?: { name: string; description?: string }[];
 }): string {
   const lines: string[] = [];
-  if (opts.style) lines.push(`视频风格：${opts.style}`);
-  if (opts.targetSceneCount) lines.push(`期望分镜数：约 ${opts.targetSceneCount} 个`);
+  if (opts.style) lines.push(`视频风格�?{opts.style}`);
+  if (opts.targetSceneCount) lines.push(`期望分镜数：�?${opts.targetSceneCount} 个`);
   if (opts.characters && opts.characters.length > 0) {
     lines.push(`已有角色（请尽量复用名字，不要重命名）：`);
     for (const c of opts.characters) {
-      lines.push(`- ${c.name}${c.description ? "：" + c.description : ""}`);
+      lines.push(`- ${c.name}${c.description ? "�? + c.description : ""}`);
     }
   }
-  lines.push("", "剧本原文：", opts.script);
+  lines.push("", "剧本原文�?, opts.script);
   return lines.join("\n");
 }
 
 /**
- * 从 LLM 的回复里抽出 JSON 块。多级容错策略：
+ * �?LLM 的回复里抽出 JSON 块。多级容错策略：
  *   1. 直接 JSON.parse 整段
  *   2. 抽取 ```json ...``` 围栏
  *   3. 抽取 ``` ...``` 通用围栏
- *   4. 取第一个 { 到最后一个 } 的子串
+ *   4. 取第一�?{ 到最后一�?} 的子�?
  *   5. 上面拿到的子串里把常见的 LLM 坏字符清洗：未转义换行、智能引号、尾随逗号
  */
 function cleanupJsonLike(slice: string): string {
   return (
     slice
-      // 智能引号 → 直引号
+      // 智能引号 �?直引�?
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/[\u2018\u2019]/g, "'")
       // 中文标点的引号当字符串包裹用，转成英文双引号
       .replace(/[\u300C\u300E]/g, '"')
       .replace(/[\u300D\u300F]/g, '"')
-      // 删除 BOM / 零宽 / 不可见控制字符
+      // 删除 BOM / 零宽 / 不可见控制字�?
       .replace(/[\uFEFF\u200B-\u200D]/g, "")
       // 行尾注释  // xxx
       .replace(/(^|[^:"'])\/\/[^\n]*/g, "$1")
-      // 块注释 /* ... */
+      // 块注�?/* ... */
       .replace(/\/\*[\s\S]*?\*\//g, "")
-      // 字符串里的真实换行 → \n（仅在被双引号包裹的范围内做最小替换）
+      // 字符串里的真实换�?�?\n（仅在被双引号包裹的范围内做最小替换）
       .replace(/"(?:[^"\\]|\\.)*"/g, (m) => m.replace(/\r?\n/g, "\\n"))
       // 数组/对象尾随逗号  ,]  ,}
       .replace(/,(\s*[}\]])/g, "$1")
@@ -121,7 +121,7 @@ function extractJson(s: string): unknown {
     try { return JSON.parse(raw); } catch { return null; }
   };
 
-  // 0) 去掉 LLM 偶发的 BOM、回车、首尾空白
+  // 0) 去掉 LLM 偶发�?BOM、回车、首尾空�?
   const text = s.replace(/^\uFEFF/, "").replace(/\r/g, "").trim();
 
   // 1) 整段
@@ -144,7 +144,7 @@ function extractJson(s: string): unknown {
     if (r !== null) return r;
   }
 
-  // 4) 第一个 { 到最后一个 }
+  // 4) 第一�?{ 到最后一�?}
   const i = text.indexOf("{");
   const j = text.lastIndexOf("}");
   if (i >= 0 && j > i) {
@@ -152,7 +152,7 @@ function extractJson(s: string): unknown {
     const r = tryParse(slice) ?? tryParse(cleanupJsonLike(slice));
     if (r !== null) return r;
 
-    // 4b) 截断兜底：尾部可能被截断了，尝试逐步去尾再 parse
+    // 4b) 截断兜底：尾部可能被截断了，尝试逐步去尾�?parse
     let s2 = slice;
     for (let k = 0; k < 12 && s2.length > 32; k++) {
       s2 = s2.slice(0, -1);
@@ -161,7 +161,7 @@ function extractJson(s: string): unknown {
     }
   }
 
-  throw new Error("LLM 返回内容无法解析为 JSON");
+  throw new Error("LLM 返回内容无法解析�?JSON");
 }
 
 type SceneDraft = {
@@ -229,12 +229,12 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非法" }, { status: 400 });
+    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
   }
   const script = typeof body.script === "string" ? body.script : "";
   const cpLen = [...script].length;
   if (cpLen < 30 || cpLen > 5000) {
-    return NextResponse.json({ error: "script 必须 30-5000 字" }, { status: 400 });
+    return NextResponse.json({ error: "script 必须 30-5000 �? }, { status: 400 });
   }
   const style = typeof body.style === "string" ? body.style.slice(0, 30) : undefined;
   const targetSceneCount = Number.isFinite(Number(body.targetSceneCount))
@@ -246,7 +246,7 @@ export async function POST(req: Request) {
         .map((c: any) => ({ name: String(c.name).trim(), description: c.description ? String(c.description) : undefined }))
     : undefined;
 
-  // 找到管线里配置的 LLM 模型（用户私有 > 全局默认）
+  // 找到管线里配置的 LLM 模型（用户私�?> 全局默认�?
   const pipeline = await getUserComicPipeline(session.id);
   const model = await prisma.model.findUnique({
     where: { slug: pipeline.llmSlug },
@@ -270,8 +270,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // 调 LLM（流式收集成完整字符串）。TS 在内部 async 函数里会丢失 `model` 的非空窄化，
-  // 这里固化成 const 让闭包内可放心用。
+  // �?LLM（流式收集成完整字符串）。TS 在内�?async 函数里会丢失 `model` 的非空窄化，
+  // 这里固化�?const 让闭包内可放心用�?
   const llmModel = model;
   const llmChannel = channel;
   const startTs = Date.now();
@@ -307,7 +307,7 @@ export async function POST(req: Request) {
     buffer = await callLLM();
   } catch (e) {
     return NextResponse.json(
-      { error: `LLM 调用失败：${e instanceof Error ? e.message : String(e)}` },
+      { error: `LLM 调用失败�?{e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }
@@ -320,7 +320,7 @@ export async function POST(req: Request) {
     parseErr = e;
   }
 
-  // 第二轮：解析失败，或解析成功但 scenes 为空 → 用更强的"只输出 JSON"提示重试一次
+  // 第二轮：解析失败，或解析成功�?scenes 为空 �?用更强的"只输�?JSON"提示重试一�?
   if (!parsed || parsed.scenes.length === 0) {
     console.warn(
       "[comic/scenes/draft] first attempt unusable, retrying. err=",
@@ -345,7 +345,7 @@ export async function POST(req: Request) {
       {
         error: `LLM 返回格式不合法：${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
         rawSample: buffer.slice(0, 1500),
-        hint: "请检查所选 LLM 是否能稳定输出 JSON。建议换更强的模型或重试。",
+        hint: "请检查所�?LLM 是否能稳定输�?JSON。建议换更强的模型或重试�?,
       },
       { status: 502 },
     );
@@ -354,14 +354,14 @@ export async function POST(req: Request) {
     console.error("[comic/scenes/draft] empty scenes; raw:\n" + buffer.slice(0, 4000));
     return NextResponse.json(
       {
-        error: "LLM 没有生成任何分镜，请尝试更具体的剧本或重新提交",
+        error: "LLM 没有生成任何分镜，请尝试更具体的剧本或重新提�?,
         rawSample: buffer.slice(0, 1500),
       },
       { status: 502 },
     );
   }
 
-  // 计费（chat token）
+  // 计费（chat token�?
   const billing = await chargeUsage({
     userId: session.id,
     modelId: model.id,
