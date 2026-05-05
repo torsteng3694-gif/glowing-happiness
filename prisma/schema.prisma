@@ -2,7 +2,10 @@
 // 与 Go (Gin + GORM) 共享同一个 Postgres 数据库
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // 同时生成本地（windows/mac 开发）和 Linux + OpenSSL 3 的 engine。
+  // Zeabur 容器是 debian + openssl 3，必须显式声明，否则 Prisma 默认拉 openssl-1.1.x 会找不到 libssl
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
