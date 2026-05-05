@@ -1,10 +1,10 @@
 /**
- * 从剧�?LLM 抽取资产清单（角�?/ 场景 / 道具�?
+ * 浠庡墽鏈?LLM 鎶藉彇璧勪骇娓呭崟锛堣鑹?/ 鍦烘櫙 / 閬撳叿锛?
  *
  * POST /api/comic/assets/extract
  *   body: { script: string, style?: string }
  *
- * 返回:
+ * 杩斿洖:
  *   {
  *     characters: { name: string; description: string; imagePrompt: string }[],
  *     scenes:     { name: string; description: string; imagePrompt: string }[],
@@ -12,7 +12,7 @@
  *     cost: number, balance: number,
  *   }
  *
- * �?user 当前 comic_pipeline.llmSlug 来跑�?
+ * 鐢?user 褰撳墠 comic_pipeline.llmSlug 鏉ヨ窇銆?
  */
 
 import { NextResponse } from "next/server";
@@ -29,11 +29,11 @@ export const maxDuration = 800;
 
 const SYSTEM_PROMPT = `You are a comic-explain video director assistant.
 TASK: Read the user's script and extract three groups of reusable visual assets:
-  1. characters  �?named persons / creatures
-  2. scenes      �?distinct locations / environments
-  3. props       �?important interactable objects, weapons, artifacts
+  1. characters  鈥?named persons / creatures
+  2. scenes      鈥?distinct locations / environments
+  3. props       鈥?important interactable objects, weapons, artifacts
 
-CRITICAL OUTPUT RULES (违反视为失败):
+CRITICAL OUTPUT RULES (杩濆弽瑙嗕负澶辫触):
 - Reply with NOTHING but a single valid JSON object. No prefix, no suffix, no markdown, no explanations, no code fences.
 - Use double quotes. No trailing commas. No comments.
 
@@ -41,41 +41,41 @@ JSON schema:
 {
   "characters": [
     {
-      "name":         "string �?10 chars (中文优先)",
-      "description":  "string �?外貌 / 性格 / 服饰 / 年龄等关键描�?,
-      "imagePrompt":  "string �?适合用于角色立绘 / 三视图生成的中文提示词，<= 200 �?
+      "name":         "string 鈮?10 chars (涓枃浼樺厛)",
+      "description":  "string 鈥?澶栬矊 / 鎬ф牸 / 鏈嶉グ / 骞撮緞绛夊叧閿弿杩?,
+      "imagePrompt":  "string 鈥?閫傚悎鐢ㄤ簬瑙掕壊绔嬬粯 / 涓夎鍥剧敓鎴愮殑涓枃鎻愮ず璇嶏紝<= 200 瀛?
     }
   ],
   "scenes": [
     {
-      "name":         "string �?10 chars",
-      "description":  "string �?时代 / 氛围 / 关键视觉元素",
-      "imagePrompt":  "string �?适合用于场景图生成的中文提示�?
+      "name":         "string 鈮?10 chars",
+      "description":  "string 鈥?鏃朵唬 / 姘涘洿 / 鍏抽敭瑙嗚鍏冪礌",
+      "imagePrompt":  "string 鈥?閫傚悎鐢ㄤ簬鍦烘櫙鍥剧敓鎴愮殑涓枃鎻愮ず璇?
     }
   ],
   "props": [
     {
-      "name":         "string �?10 chars",
-      "description":  "string �?形�?/ 材质 / 用�?,
-      "imagePrompt":  "string �?适合用于道具图生成的中文提示�?
+      "name":         "string 鈮?10 chars",
+      "description":  "string 鈥?褰㈡??/ 鏉愯川 / 鐢ㄩ??,
+      "imagePrompt":  "string 鈥?閫傚悎鐢ㄤ簬閬撳叿鍥剧敓鎴愮殑涓枃鎻愮ず璇?
     }
   ]
 }
 
 Content rules:
 - Avoid duplicates; each asset only once.
-- 角色必须出场被叫到名字（含旁�?Narrator）才列入；只在背景一闪而过的不要列�?
-- 场景至少要出现剧情；同一地点不同时间合并为一个�?
-- 道具：优先关键武器、法宝、剧情触发物、饰品。普通日用物不列�?
-- imagePrompt 不要带画风字段（画风由系统拼接），其它细节越具体越好�?
-- 不超过：characters �?12，scenes �?10，props �?10�?
+- 瑙掕壊蹇呴』鍑哄満琚彨鍒板悕瀛楋紙鍚梺鐧?Narrator锛夋墠鍒楀叆锛涘彧鍦ㄨ儗鏅竴闂?岃繃鐨勪笉瑕佸垪銆?
+- 鍦烘櫙鑷冲皯瑕佸嚭鐜板墽鎯咃紱鍚屼竴鍦扮偣涓嶅悓鏃堕棿鍚堝苟涓轰竴涓??
+- 閬撳叿锛氫紭鍏堝叧閿鍣ㄣ?佹硶瀹濄?佸墽鎯呰Е鍙戠墿銆侀グ鍝併?傛櫘閫氭棩鐢ㄧ墿涓嶅垪銆?
+- imagePrompt 涓嶈甯︾敾椋庡瓧娈碉紙鐢婚鐢辩郴缁熸嫾鎺ワ級锛屽叾瀹冪粏鑺傝秺鍏蜂綋瓒婂ソ銆?
+- 涓嶈秴杩囷細characters 鈮?12锛宻cenes 鈮?10锛宲rops 鈮?10銆?
 
 Output: ONLY the JSON. Begin with { and end with }.`;
 
 function buildUserPrompt(script: string, style?: string): string {
   const lines: string[] = [];
-  if (style) lines.push(`视频风格�?{style}`);
-  lines.push("剧本原文�?, script);
+  if (style) lines.push(`瑙嗛椋庢牸锛?{style}`);
+  lines.push("鍓ф湰鍘熸枃锛?, script);
   return lines.join("\n");
 }
 
@@ -111,7 +111,7 @@ function extractJson(s: string): unknown {
     const r = tryParse(slice) ?? tryParse(cleanupJsonLike(slice));
     if (r !== null) return r;
   }
-  throw new Error("LLM 返回内容无法解析�?JSON");
+  throw new Error("LLM 杩斿洖鍐呭鏃犳硶瑙ｆ瀽涓?JSON");
 }
 
 type Item = { name: string; description: string; imagePrompt: string };
@@ -139,17 +139,17 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
+    return NextResponse.json({ error: "璇锋眰浣撻潪娉? }, { status: 400 });
   }
   const script = typeof body.script === "string" ? body.script : "";
   const cpLen = [...script].length;
   if (cpLen < 30 || cpLen > 5000) {
-    return NextResponse.json({ error: "script 必须 30-5000 �? }, { status: 400 });
+    return NextResponse.json({ error: "script 蹇呴』 30-5000 瀛? }, { status: 400 });
   }
   const style = typeof body.style === "string" ? body.style.slice(0, 30) : undefined;
 
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
   });
   if (!model || model.type !== "chat" || !model.enabled) {
     return NextResponse.json(
-      { error: `LLM 模型 '${pipeline.llmSlug}' 不可用，请到 /admin/comic-pipeline 配置` },
+      { error: `LLM 妯″瀷 '${pipeline.llmSlug}' 涓嶅彲鐢紝璇峰埌 /admin/comic-pipeline 閰嶇疆` },
       { status: 503 },
     );
   }
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
   });
   if (!channel) {
     return NextResponse.json(
-      { error: `LLM 模型 '${pipeline.llmSlug}' 没有可用渠道` },
+      { error: `LLM 妯″瀷 '${pipeline.llmSlug}' 娌℃湁鍙敤娓犻亾` },
       { status: 503 },
     );
   }
@@ -211,7 +211,7 @@ export async function POST(req: Request) {
     buffer = await callLLM();
   } catch (e) {
     return NextResponse.json(
-      { error: `LLM 调用失败�?{e instanceof Error ? e.message : String(e)}` },
+      { error: `LLM 璋冪敤澶辫触锛?{e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }
@@ -228,7 +228,7 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("[comic/assets/extract] parse failed:", e);
       return NextResponse.json(
-        { error: `LLM 返回格式不合法：${e instanceof Error ? e.message : String(e)}`, rawSample: buffer.slice(0, 1500) },
+        { error: `LLM 杩斿洖鏍煎紡涓嶅悎娉曪細${e instanceof Error ? e.message : String(e)}`, rawSample: buffer.slice(0, 1500) },
         { status: 502 },
       );
     }
@@ -239,7 +239,7 @@ export async function POST(req: Request) {
   const scenes = normalizeList(root.scenes, 10);
   const props = normalizeList(root.props, 10);
 
-  // 计费
+  // 璁¤垂
   const billing = await chargeUsage({
     userId: session.id,
     modelId: model.id,

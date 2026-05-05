@@ -36,10 +36,10 @@ async function fetchImageBuffer(url: string): Promise<Buffer> {
   try {
     u = new URL(url);
   } catch {
-    throw new Error("图片 URL 无效");
+    throw new Error("鍥剧墖 URL 鏃犳晥");
   }
-  if (!/^https?:$/.test(u.protocol)) throw new Error("只支�?http/https 图片");
-  if (isPrivateHost(u.hostname)) throw new Error("禁止访问内网图片地址");
+  if (!/^https?:$/.test(u.protocol)) throw new Error("鍙敮鎸?http/https 鍥剧墖");
+  if (isPrivateHost(u.hostname)) throw new Error("绂佹璁块棶鍐呯綉鍥剧墖鍦板潃");
 
   const res = await fetch(u.toString(), {
     method: "GET",
@@ -52,7 +52,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer> {
     redirect: "follow",
     signal: AbortSignal.timeout(30_000),
   });
-  if (!res.ok) throw new Error(`拉取图片失败: ${res.status}`);
+  if (!res.ok) throw new Error(`鎷夊彇鍥剧墖澶辫触: ${res.status}`);
   const arr = await res.arrayBuffer();
   return Buffer.from(arr);
 }
@@ -103,12 +103,12 @@ export async function POST(req: Request) {
   try {
     await requireUser();
   } catch {
-    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
+    return NextResponse.json({ error: "璇锋眰浣撻潪娉? }, { status: 400 });
   }
 
   const format = normalizeFormat((body as Record<string, unknown>).format);
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
     : [];
   const urls = panelsRaw.map((p) => p.url || "").filter(Boolean);
   if (urls.length < 2 || urls.length > 8) {
-    return NextResponse.json({ error: "可导出图片数量必须在 2~8 之间" }, { status: 400 });
+    return NextResponse.json({ error: "鍙鍑哄浘鐗囨暟閲忓繀椤诲湪 2~8 涔嬮棿" }, { status: 400 });
   }
 
   try {
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "导出失败" },
+      { error: e instanceof Error ? e.message : "瀵煎嚭澶辫触" },
       { status: 502 },
     );
   }

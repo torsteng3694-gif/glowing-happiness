@@ -31,7 +31,7 @@ function extractJson(text: string): KeywordAnalysis {
   const obj = candidate.match(/\{[\s\S]*\}/)?.[0] || candidate;
   const parsed = JSON.parse(obj) as KeywordAnalysis;
   if (!Array.isArray(parsed.panels) || parsed.panels.length === 0) {
-    throw new Error("关键词智能体未返回有�?panels");
+    throw new Error("鍏抽敭璇嶆櫤鑳戒綋鏈繑鍥炴湁鏁?panels");
   }
   return parsed;
 }
@@ -41,38 +41,38 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
+    return NextResponse.json({ error: "璇锋眰浣撻潪娉? }, { status: 400 });
   }
 
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const llmModelId = typeof body.llmModelId === "string" ? body.llmModelId : "";
   const panelCount = Math.min(Math.max(parseInt(String(body.panelCount || 4), 10) || 4, 2), 8);
-  if (!prompt) return NextResponse.json({ error: "请输入漫画创意描�? }, { status: 400 });
-  if (!llmModelId) return NextResponse.json({ error: "请选择语言模型" }, { status: 400 });
+  if (!prompt) return NextResponse.json({ error: "璇疯緭鍏ユ极鐢诲垱鎰忔弿杩? }, { status: 400 });
+  if (!llmModelId) return NextResponse.json({ error: "璇烽?夋嫨璇█妯″瀷" }, { status: 400 });
 
   const [user, llmModel] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.id } }),
     prisma.model.findUnique({ where: { id: llmModelId }, include: { provider: true } }),
   ]);
-  if (!user) return NextResponse.json({ error: "用户不存�? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "鐢ㄦ埛涓嶅瓨鍦? }, { status: 400 });
   if (!llmModel || llmModel.type !== "chat") {
-    return NextResponse.json({ error: "语言模型不可�? }, { status: 400 });
+    return NextResponse.json({ error: "璇█妯″瀷涓嶅彲鐢? }, { status: 400 });
   }
 
   const llmChannel = await pickChannel(llmModel.id, null);
   const llmFallbacks = llmChannel ? await getChannelsForModel(llmModel.id) : [];
 
   const system = [
-    "你是「漫画关键词智能体」，负责把用户创意拆成可生成漫画的关键词与分镜�?,
-    "必须仅输�?JSON，不要输�?markdown，不要解释�?,
+    "浣犳槸銆屾极鐢诲叧閿瘝鏅鸿兘浣撱?嶏紝璐熻矗鎶婄敤鎴峰垱鎰忔媶鎴愬彲鐢熸垚婕敾鐨勫叧閿瘝涓庡垎闀溿??,
+    "蹇呴』浠呰緭鍑?JSON锛屼笉瑕佽緭鍑?markdown锛屼笉瑕佽В閲娿??,
   ].join("\n");
   const userPrompt = [
-    `将下面的创意拆解�?${panelCount} 格漫画分镜并输出 JSON：`,
+    `灏嗕笅闈㈢殑鍒涙剰鎷嗚В鎴?${panelCount} 鏍兼极鐢诲垎闀滃苟杈撳嚭 JSON锛歚,
     "{",
     '  "styleKeywords": ["..."],',
     '  "characterKeywords": ["..."],',
@@ -80,15 +80,15 @@ export async function POST(req: Request) {
     '  "moodKeywords": ["..."],',
     '  "cameraKeywords": ["..."],',
     '  "panels": [',
-    '    {"index":1,"title":"格标�?,"caption":"字幕文案","imagePrompt":"可直接用于文生图的英文提示词"}',
+    '    {"index":1,"title":"鏍兼爣棰?,"caption":"瀛楀箷鏂囨","imagePrompt":"鍙洿鎺ョ敤浜庢枃鐢熷浘鐨勮嫳鏂囨彁绀鸿瘝"}',
     "  ]",
     "}",
     "",
-    `创意�?{prompt}`,
-    "约束�?,
-    "- 保持人物一致性与服饰一致�?,
-    "- 画面为连贯叙�?,
-    "- imagePrompt 使用英文，包含角色、环境、光线、构图、镜头信�?,
+    `鍒涙剰锛?{prompt}`,
+    "绾︽潫锛?,
+    "- 淇濇寔浜虹墿涓?鑷存?т笌鏈嶉グ涓?鑷存??,
+    "- 鐢婚潰涓鸿繛璐彊浜?,
+    "- imagePrompt 浣跨敤鑻辨枃锛屽寘鍚鑹层?佺幆澧冦?佸厜绾裤?佹瀯鍥俱?侀暅澶翠俊鎭?,
   ].join("\n");
 
   const chatStart = Date.now();
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     }
   } catch (e) {
     return NextResponse.json(
-      { error: `关键词智能体调用失败�?{e instanceof Error ? e.message : String(e)}` },
+      { error: `鍏抽敭璇嶆櫤鑳戒綋璋冪敤澶辫触锛?{e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }
@@ -130,7 +130,7 @@ export async function POST(req: Request) {
     analysis = extractJson(llmText);
   } catch (e) {
     return NextResponse.json(
-      { error: `关键词解析失败：${e instanceof Error ? e.message : String(e)}` },
+      { error: `鍏抽敭璇嶈В鏋愬け璐ワ細${e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
     },
     drafts: (analysis.panels || []).slice(0, panelCount).map((x, i) => ({
       index: x.index || i + 1,
-      title: x.title || `�?{i + 1}格`,
+      title: x.title || `绗?{i + 1}鏍糮,
       caption: x.caption || "",
       imagePrompt: x.imagePrompt || "",
     })),

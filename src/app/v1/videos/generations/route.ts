@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   if (resolved.scoped && !resolved.primary) {
     return NextResponse.json({
       error: {
-        message: `API Key 未授权调用模�?'${model.slug}'。请�?/dashboard/apikeys 中为�?Key 绑定对应渠道。`,
+        message: `API Key 鏈巿鏉冭皟鐢ㄦā鍨?'${model.slug}'銆傝鍦?/dashboard/apikeys 涓负璇?Key 缁戝畾瀵瑰簲娓犻亾銆俙,
         type: "model_not_allowed_for_api_key",
         code: "model_not_allowed",
       },

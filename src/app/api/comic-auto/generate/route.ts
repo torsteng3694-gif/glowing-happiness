@@ -8,7 +8,7 @@ import { rewriteLocalRefsToBase64 } from "@/lib/media-ref";
 import { saveMediaAssets } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
-export const maxDuration = 800; // Vercel Hobby 上限
+export const maxDuration = 800; // Vercel Hobby 娑撳﹪妾?
 
 type KeywordAnalysis = {
   styleKeywords: string[];
@@ -31,7 +31,7 @@ function extractJson(text: string): KeywordAnalysis {
   const obj = candidate.match(/\{[\s\S]*\}/)?.[0] || candidate;
   const parsed = JSON.parse(obj) as KeywordAnalysis;
   if (!Array.isArray(parsed.panels) || parsed.panels.length === 0) {
-    throw new Error("关键词智能体未返回有�?panels");
+    throw new Error("閸忔娊鏁拠宥嗘閼虫垝缍嬮張顏囩箲閸ョ偞婀侀弫?panels");
   }
   return parsed;
 }
@@ -41,12 +41,12 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    return NextResponse.json({ error: "鐠囧嘲鍘涢惂璇茬秿" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
+    return NextResponse.json({ error: "鐠囬攱鐪版担鎾绘姜濞?? }, { status: 400 });
   }
 
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
@@ -55,9 +55,9 @@ export async function POST(req: Request) {
   const panelCount = Math.min(Math.max(parseInt(String(body.panelCount || 4), 10) || 4, 2), 8);
   const aspectRatio = typeof body.aspectRatio === "string" ? body.aspectRatio : "3:2";
 
-  if (!prompt) return NextResponse.json({ error: "请输入漫画创意描�? }, { status: 400 });
+  if (!prompt) return NextResponse.json({ error: "鐠囩柉绶崗銉︽瀬閻㈣鍨遍幇蹇斿伎鏉?? }, { status: 400 });
   if (!llmModelId || !imageModelId) {
-    return NextResponse.json({ error: "请选择语言模型与图片模�? }, { status: 400 });
+    return NextResponse.json({ error: "鐠囩兘?澶嬪鐠囶叀鈻堝Ο鈥崇?锋稉搴℃禈閻楀洦膩閸?? }, { status: 400 });
   }
 
   const [user, llmModel, imageModel] = await Promise.all([
@@ -65,23 +65,23 @@ export async function POST(req: Request) {
     prisma.model.findUnique({ where: { id: llmModelId }, include: { provider: true } }),
     prisma.model.findUnique({ where: { id: imageModelId }, include: { provider: true } }),
   ]);
-  if (!user) return NextResponse.json({ error: "用户不存�? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "閻€劍鍩涙稉宥呯摠閸?? }, { status: 400 });
   if (!llmModel || llmModel.type !== "chat") {
-    return NextResponse.json({ error: "语言模型不可�? }, { status: 400 });
+    return NextResponse.json({ error: "鐠囶叀鈻堝Ο鈥崇?锋稉宥呭讲閻?? }, { status: 400 });
   }
   if (!imageModel || imageModel.type !== "image") {
-    return NextResponse.json({ error: "图片模型不可�? }, { status: 400 });
+    return NextResponse.json({ error: "閸ュ墽澧栧Ο鈥崇?锋稉宥呭讲閻?? }, { status: 400 });
   }
 
   const llmChannel = await pickChannel(llmModel.id, null);
   const llmFallbacks = llmChannel ? await getChannelsForModel(llmModel.id) : [];
 
   const system = [
-    "你是「漫画关键词智能体」，负责把用户创意拆成可生成漫画的关键词与分镜�?,
-    "必须仅输�?JSON，不要输�?markdown，不要解释�?,
+    "娴ｇ姵妲搁妴灞炬瀬閻㈣鍙ч柨顔跨槤閺呴缚鍏樻担鎾??宥忕礉鐠愮喕鐭楅幎濠勬暏閹村嘲鍨遍幇蹇斿閹存劕褰查悽鐔稿灇濠曨偆鏁鹃惃鍕彠闁款喛鐦濇稉搴″瀻闂?婧???,
+    "韫囧懘銆忔禒鍛扮翻閸??JSON閿涘奔绗夌憰浣界翻閸??markdown閿涘奔绗夌憰浣叫掗柌濞???,
   ].join("\n");
   const userPrompt = [
-    `将下面的创意拆解�?${panelCount} 格漫画分镜并输出 JSON：`,
+    `鐏忓棔绗呴棃銏㈡畱閸掓稒鍓伴幏鍡毿掗幋?${panelCount} 閺嶅吋鏋侀悽璇插瀻闂?婊冭嫙鏉堟挸鍤? JSON閿涙瓪,
     "{",
     '  "styleKeywords": ["..."],',
     '  "characterKeywords": ["..."],',
@@ -89,15 +89,15 @@ export async function POST(req: Request) {
     '  "moodKeywords": ["..."],',
     '  "cameraKeywords": ["..."],',
     '  "panels": [',
-    '    {"index":1,"title":"格标�?,"caption":"字幕文案","imagePrompt":"可直接用于文生图的英文提示词"}',
+    '    {"index":1,"title":"閺嶅吋鐖ｆ０?,"caption":"鐎涙绠烽弬鍥攳","imagePrompt":"閸欘垳娲块幒銉ф暏娴滃孩鏋冮悽鐔锋禈閻ㄥ嫯瀚抽弬鍥ㄥ絹缁?楦跨槤"}',
     "  ]",
     "}",
     "",
-    `创意�?{prompt}`,
-    "约束�?,
-    "- 保持人物一致性与服饰一致�?,
-    "- 画面为连贯叙�?,
-    "- imagePrompt 使用英文，包含角色、环境、光线、构图、镜头信�?,
+    `閸掓稒鍓伴敍?{prompt}`,
+    "缁撅附娼敍?,
+    "- 娣囨繃瀵旀禍铏瑰⒖娑??閼峰瓨?褌绗岄張宥夈偘娑??閼峰瓨??,
+    "- 閻㈠娼版稉楦跨箾鐠愵垰褰婃禍?,
+    "- imagePrompt 娴ｈ法鏁ら懟杈ㄦ瀮閿涘苯瀵橀崥顐ヮ潡閼瑰眰?浣哄箚婢у啨?浣稿帨缁捐￥?浣圭?崶淇??渚?鏆呮径缈犱繆閹??,
   ].join("\n");
 
   const chatStart = Date.now();
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
     }
   } catch (e) {
     return NextResponse.json(
-      { error: `关键词智能体调用失败�?{e instanceof Error ? e.message : String(e)}` },
+      { error: `閸忔娊鏁拠宥嗘閼虫垝缍嬬拫鍐暏婢惰精瑙﹂敍?{e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }
@@ -139,7 +139,7 @@ export async function POST(req: Request) {
     analysis = extractJson(llmText);
   } catch (e) {
     return NextResponse.json(
-      { error: `关键词解析失败：${e instanceof Error ? e.message : String(e)}` },
+      { error: `閸忔娊鏁拠宥埿掗弸鎰亼鐠愩儻绱?${e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
 
   const images: Array<{ index: number; title: string; caption: string; url?: string; error?: string }> = [];
   let totalImageCost = 0;
-  // 连续一致性增强：首格成功图作为后续格参考图
+  // 鏉╃偟鐢绘稉?閼峰瓨?褍顤冨鐚寸窗妫ｆ牗鐗搁幋鎰閸ュ彞缍旀稉鍝勬倵缂侇厽鐗搁崣鍌??鍐ㄦ禈
   let anchorRefUrl: string | null = null;
   const batchId = `comic-auto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   for (const p of analysis.panels.slice(0, panelCount)) {
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
         imageFallbacks,
       );
       const url = img.images[0]?.url;
-      if (!url) throw new Error("图片模型未返�?URL");
+      if (!url) throw new Error("閸ュ墽澧栧Ο鈥崇?烽張顏囩箲閸??URL");
       if (!anchorRefUrl) anchorRefUrl = url;
       const billing = await chargeUsage({
         userId: user.id,
@@ -231,7 +231,7 @@ export async function POST(req: Request) {
       prompt: combinedPrompt,
       params: {
         source: "comic-auto:generate",
-        sourceLabel: "自动漫画智能�?,
+        sourceLabel: "閼奉亜濮╁⿻顐ゆ暰閺呴缚鍏樻担?,
         batchId,
         aspectRatio,
         panelCount,

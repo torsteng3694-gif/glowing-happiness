@@ -9,39 +9,39 @@ import { rewriteLocalRefsToBase64 } from "@/lib/media-ref";
 import { buildVideoRawParams } from "@/lib/comic-agent/helpers";
 
 export const runtime = "nodejs";
-// 视频异步任务（grok-video-3 等）最长可能要 10 分钟
-export const maxDuration = 800; // Vercel Hobby 上限
+// 瑙嗛寮傛浠诲姟锛坓rok-video-3 绛夛級鏈?闀垮彲鑳借 10 鍒嗛挓
+export const maxDuration = 800; // Vercel Hobby 涓婇檺
 
 export async function POST(req: Request) {
   let session;
   try { session = await requireUser(); }
-  catch { return NextResponse.json({ error: "请先登录" }, { status: 401 }); }
+  catch { return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 }); }
 
   const body = await req.json().catch(() => null);
-  if (!body?.modelId || !body?.prompt) return NextResponse.json({ error: "参数错误" }, { status: 400 });
+  if (!body?.modelId || !body?.prompt) return NextResponse.json({ error: "鍙傛暟閿欒" }, { status: 400 });
   const duration = Math.min(Math.max(parseInt(body.duration) || 5, 1), 30);
   const rawParamsIn =
     body.params && typeof body.params === "object" && !Array.isArray(body.params)
       ? (body.params as Record<string, unknown>)
       : undefined;
 
-  // �?prompt 并发提交时给每次请求加独�?seed，避免上游把"完全一样的 body"
-  // 当作重复请求返回同一段视频�?  const rawParams: Record<string, unknown> = { ...(rawParamsIn || {}) };
+  // 鍚?prompt 骞跺彂鎻愪氦鏃剁粰姣忔璇锋眰鍔犵嫭绔?seed锛岄伩鍏嶄笂娓告妸"瀹屽叏涓?鏍风殑 body"
+  // 褰撲綔閲嶅璇锋眰杩斿洖鍚屼竴娈佃棰戙??  const rawParams: Record<string, unknown> = { ...(rawParamsIn || {}) };
   if (rawParams.seed === undefined || rawParams.seed === null || rawParams.seed === "" || rawParams.seed === 0) {
     rawParams.seed = Math.floor(Math.random() * 2_147_483_647);
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.id } });
-  if (!user) return NextResponse.json({ error: "用户不存�? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "鐢ㄦ埛涓嶅瓨鍦? }, { status: 400 });
 
   const model = await prisma.model.findUnique({
     where: { id: body.modelId }, include: { provider: true },
   });
-  if (!model || model.type !== "video") return NextResponse.json({ error: "模型不可�? }, { status: 400 });
+  if (!model || model.type !== "video") return NextResponse.json({ error: "妯″瀷涓嶅彲鐢? }, { status: 400 });
 
-  // 统一视频参数构造：
-  // - 不同模型（veo / grok / 即梦 / 可灵 / SD2.0 等）必填字段不同
-  // - buildVideoRawParams 会根�?modelSlug 自动补齐关键参数并做 duration 约束
+  // 缁熶竴瑙嗛鍙傛暟鏋勯?狅細
+  // - 涓嶅悓妯″瀷锛坴eo / grok / 鍗虫ⅵ / 鍙伒 / SD2.0 绛夛級蹇呭～瀛楁涓嶅悓
+  // - buildVideoRawParams 浼氭牴鎹?modelSlug 鑷姩琛ラ綈鍏抽敭鍙傛暟骞跺仛 duration 绾︽潫
   const frameUrls: string[] = [];
   const tryPush = (v: unknown) => {
     if (typeof v === "string" && v) frameUrls.push(v);
@@ -62,13 +62,13 @@ export async function POST(req: Request) {
 
   const channelId: string | null = typeof body.channelId === "string" ? body.channelId : null;
   const channel = await pickChannel(model.id, channelId);
-  // 显式指定 channelId 且命中时，固定该渠道，不自动降级
+  // 鏄惧紡鎸囧畾 channelId 涓斿懡涓椂锛屽浐瀹氳娓犻亾锛屼笉鑷姩闄嶇骇
   const fallbackChannels = channel ? (channelId && channel.id === channelId ? [] : await getChannelsForModel(model.id)) : [];
   const unitPrice = channel ? channel.sellUnitPrice : model.unitPrice;
   const estimated = unitPrice * duration;
-  if (user.balance < estimated) return NextResponse.json({ error: "余额不足" }, { status: 402 });
+  if (user.balance < estimated) return NextResponse.json({ error: "浣欓涓嶈冻" }, { status: 402 });
 
-  // 本地 /uploads URL 上游访问不到；这里自动改写为 base64 data URL 再下�?  let rewrittenParams = await rewriteLocalRefsToBase64(built.params);
+  // 鏈湴 /uploads URL 涓婃父璁块棶涓嶅埌锛涜繖閲岃嚜鍔ㄦ敼鍐欎负 base64 data URL 鍐嶄笅鍙?  let rewrittenParams = await rewriteLocalRefsToBase64(built.params);
   let effectiveDuration = built.effectiveDuration;
   let servedModel = model;
   let servedChannel = channel;
@@ -92,13 +92,13 @@ export async function POST(req: Request) {
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
 
-    // 自动兜底：即�?3.5 Pro 失败后，自动切到 grok-video-3 重试一�?    if (model.slug === "doubao-seedance-1-5-pro-251215") {
+    // 鑷姩鍏滃簳锛氬嵆姊?3.5 Pro 澶辫触鍚庯紝鑷姩鍒囧埌 grok-video-3 閲嶈瘯涓?娆?    if (model.slug === "doubao-seedance-1-5-pro-251215") {
       try {
         const grok = await prisma.model.findFirst({
           where: { slug: "grok-video-3", type: "video", enabled: true },
           include: { provider: true },
         });
-        if (!grok) throw new Error("兜底模型 grok-video-3 不可�?);
+        if (!grok) throw new Error("鍏滃簳妯″瀷 grok-video-3 涓嶅彲鐢?);
 
         const grokBuilt = buildVideoRawParams({
           modelSlug: grok.slug,
@@ -130,20 +130,20 @@ export async function POST(req: Request) {
       } catch (e2) {
         const raw2 = e2 instanceof Error ? e2.message : String(e2);
         const hint =
-          /参数格式错误|格式不对|invalid image|unreachable/i.test(raw2)
-            ? "（上游无法访问首帧图，请用可公网访问�?URL，或配置 PUBLIC_BASE_URL 指向公网隧道�?
+          /鍙傛暟鏍煎紡閿欒|鏍煎紡涓嶅|invalid image|unreachable/i.test(raw2)
+            ? "锛堜笂娓告棤娉曡闂甯у浘锛岃鐢ㄥ彲鍏綉璁块棶鐨?URL锛屾垨閰嶇疆 PUBLIC_BASE_URL 鎸囧悜鍏綉闅ч亾锛?
             : "";
         console.error("[api/video] upstream failed with fallback:", raw, "=>", raw2);
-        return NextResponse.json({ error: `视频生成失败�?{raw2}${hint}` }, { status: 502 });
+        return NextResponse.json({ error: `瑙嗛鐢熸垚澶辫触锛?{raw2}${hint}` }, { status: 502 });
       }
     } else {
       const hint =
-        /参数格式错误|格式不对|invalid image|unreachable/i.test(raw)
-          ? "（上游无法访问首帧图，请用可公网访问�?URL，或配置 PUBLIC_BASE_URL 指向公网隧道�?
+        /鍙傛暟鏍煎紡閿欒|鏍煎紡涓嶅|invalid image|unreachable/i.test(raw)
+          ? "锛堜笂娓告棤娉曡闂甯у浘锛岃鐢ㄥ彲鍏綉璁块棶鐨?URL锛屾垨閰嶇疆 PUBLIC_BASE_URL 鎸囧悜鍏綉闅ч亾锛?
           : "";
       console.error("[api/video] upstream failed:", raw);
       return NextResponse.json(
-        { error: `视频生成失败�?{raw}${hint}` },
+        { error: `瑙嗛鐢熸垚澶辫触锛?{raw}${hint}` },
         { status: 502 },
       );
     }

@@ -1,25 +1,25 @@
 /**
- * 剧本拆分接口
+ * 鍓ф湰鎷嗗垎鎺ュ彛
  *
  * POST /api/comic/scenes/draft
  *   body: {
- *     script: string,         // 必填，原始剧本文�?
- *     style?: string,         // 风格描述，例�?"2D动画" / "真人写实"
- *     targetSceneCount?: number, // 期望分镜数；不传�?LLM 自行决定
- *     characters?: { name: string; description?: string }[], // 可选，已有的角色清单（�?LLM 复用名字�?
+ *     script: string,         // 蹇呭～锛屽師濮嬪墽鏈枃鏈?
+ *     style?: string,         // 椋庢牸鎻忚堪锛屼緥濡?"2D鍔ㄧ敾" / "鐪熶汉鍐欏疄"
+ *     targetSceneCount?: number, // 鏈熸湜鍒嗛暅鏁帮紱涓嶄紶鍒?LLM 鑷鍐冲畾
+ *     characters?: { name: string; description?: string }[], // 鍙?夛紝宸叉湁鐨勮鑹叉竻鍗曪紙璁?LLM 澶嶇敤鍚嶅瓧锛?
  *   }
  *
- * 返回 { scenes: SceneDraft[], characters: { name, description }[] }
+ * 杩斿洖 { scenes: SceneDraft[], characters: { name, description }[] }
  *
- * SceneDraft 结构�?
+ * SceneDraft 缁撴瀯锛?
  *   {
  *     index: number,             // 1-based
- *     description: string,       // 画面描述（用�?image / video prompt�?
- *     dialog: string,            // 台词（可空字符串，表示纯画面无对白）
- *     speaker?: string,          // 说话角色名（dialog 非空时建议给�?
- *     emotion?: string,          // 情绪 hint
- *     suggestedDurationSec?: number, // 推荐时长�?/8/10�?
- *     transitionHint?: string,   // 与下一镜的转场提示，用于尾帧生�?
+ *     description: string,       // 鐢婚潰鎻忚堪锛堢敤浜?image / video prompt锛?
+ *     dialog: string,            // 鍙拌瘝锛堝彲绌哄瓧绗︿覆锛岃〃绀虹函鐢婚潰鏃犲鐧斤級
+ *     speaker?: string,          // 璇磋瘽瑙掕壊鍚嶏紙dialog 闈炵┖鏃跺缓璁粰锛?
+ *     emotion?: string,          // 鎯呯华 hint
+ *     suggestedDurationSec?: number, // 鎺ㄨ崘鏃堕暱锛?/8/10锛?
+ *     transitionHint?: string,   // 涓庝笅涓?闀滅殑杞満鎻愮ず锛岀敤浜庡熬甯х敓鎴?
  *   }
  */
 
@@ -38,7 +38,7 @@ export const maxDuration = 800;
 const SYSTEM_PROMPT = `You are a comic-explain video director assistant.
 Task: split the user-provided script into per-shot "scenes" that can be sent to image and video models one by one.
 
-CRITICAL OUTPUT RULES (违反则视为失�?:
+CRITICAL OUTPUT RULES (杩濆弽鍒欒涓哄け璐?:
 1. Reply with NOTHING but a single valid JSON object. No prefix, no suffix, no markdown, no explanations, no code fences.
 2. Use double quotes for ALL strings. Never trailing commas. Never comments.
 3. All field names must match exactly (case-sensitive).
@@ -61,8 +61,8 @@ JSON schema:
 
 Content rules:
 - Each scene = one image-able shot + at most one dialog line (15-40 chars per shot for natural pacing).
-- description must be in 中文 if the input script is Chinese; concrete and visual, no abstract feelings.
-- Identify ALL named speakers (including 旁白 / Narrator) and put them in characters with short visual + personality description.
+- description must be in 涓枃 if the input script is Chinese; concrete and visual, no abstract feelings.
+- Identify ALL named speakers (including 鏃佺櫧 / Narrator) and put them in characters with short visual + personality description.
 - If user provided existing characters, REUSE the same names without renaming.
 
 Output: ONLY the JSON. Begin with { and end with }.`;
@@ -74,44 +74,44 @@ function buildUserPrompt(opts: {
   characters?: { name: string; description?: string }[];
 }): string {
   const lines: string[] = [];
-  if (opts.style) lines.push(`视频风格�?{opts.style}`);
-  if (opts.targetSceneCount) lines.push(`期望分镜数：�?${opts.targetSceneCount} 个`);
+  if (opts.style) lines.push(`瑙嗛椋庢牸锛?{opts.style}`);
+  if (opts.targetSceneCount) lines.push(`鏈熸湜鍒嗛暅鏁帮細绾?${opts.targetSceneCount} 涓猔);
   if (opts.characters && opts.characters.length > 0) {
-    lines.push(`已有角色（请尽量复用名字，不要重命名）：`);
+    lines.push(`宸叉湁瑙掕壊锛堣灏介噺澶嶇敤鍚嶅瓧锛屼笉瑕侀噸鍛藉悕锛夛細`);
     for (const c of opts.characters) {
-      lines.push(`- ${c.name}${c.description ? "�? + c.description : ""}`);
+      lines.push(`- ${c.name}${c.description ? "锛? + c.description : ""}`);
     }
   }
-  lines.push("", "剧本原文�?, opts.script);
+  lines.push("", "鍓ф湰鍘熸枃锛?, opts.script);
   return lines.join("\n");
 }
 
 /**
- * �?LLM 的回复里抽出 JSON 块。多级容错策略：
- *   1. 直接 JSON.parse 整段
- *   2. 抽取 ```json ...``` 围栏
- *   3. 抽取 ``` ...``` 通用围栏
- *   4. 取第一�?{ 到最后一�?} 的子�?
- *   5. 上面拿到的子串里把常见的 LLM 坏字符清洗：未转义换行、智能引号、尾随逗号
+ * 浠?LLM 鐨勫洖澶嶉噷鎶藉嚭 JSON 鍧椼?傚绾у閿欑瓥鐣ワ細
+ *   1. 鐩存帴 JSON.parse 鏁存
+ *   2. 鎶藉彇 ```json ...``` 鍥存爮
+ *   3. 鎶藉彇 ``` ...``` 閫氱敤鍥存爮
+ *   4. 鍙栫涓?涓?{ 鍒版渶鍚庝竴涓?} 鐨勫瓙涓?
+ *   5. 涓婇潰鎷垮埌鐨勫瓙涓查噷鎶婂父瑙佺殑 LLM 鍧忓瓧绗︽竻娲楋細鏈浆涔夋崲琛屻?佹櫤鑳藉紩鍙枫?佸熬闅忛?楀彿
  */
 function cleanupJsonLike(slice: string): string {
   return (
     slice
-      // 智能引号 �?直引�?
+      // 鏅鸿兘寮曞彿 鈫?鐩村紩鍙?
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/[\u2018\u2019]/g, "'")
-      // 中文标点的引号当字符串包裹用，转成英文双引号
+      // 涓枃鏍囩偣鐨勫紩鍙峰綋瀛楃涓插寘瑁圭敤锛岃浆鎴愯嫳鏂囧弻寮曞彿
       .replace(/[\u300C\u300E]/g, '"')
       .replace(/[\u300D\u300F]/g, '"')
-      // 删除 BOM / 零宽 / 不可见控制字�?
+      // 鍒犻櫎 BOM / 闆跺 / 涓嶅彲瑙佹帶鍒跺瓧绗?
       .replace(/[\uFEFF\u200B-\u200D]/g, "")
-      // 行尾注释  // xxx
+      // 琛屽熬娉ㄩ噴  // xxx
       .replace(/(^|[^:"'])\/\/[^\n]*/g, "$1")
-      // 块注�?/* ... */
+      // 鍧楁敞閲?/* ... */
       .replace(/\/\*[\s\S]*?\*\//g, "")
-      // 字符串里的真实换�?�?\n（仅在被双引号包裹的范围内做最小替换）
+      // 瀛楃涓查噷鐨勭湡瀹炴崲琛?鈫?\n锛堜粎鍦ㄨ鍙屽紩鍙峰寘瑁圭殑鑼冨洿鍐呭仛鏈?灏忔浛鎹級
       .replace(/"(?:[^"\\]|\\.)*"/g, (m) => m.replace(/\r?\n/g, "\\n"))
-      // 数组/对象尾随逗号  ,]  ,}
+      // 鏁扮粍/瀵硅薄灏鹃殢閫楀彿  ,]  ,}
       .replace(/,(\s*[}\]])/g, "$1")
   );
 }
@@ -121,10 +121,10 @@ function extractJson(s: string): unknown {
     try { return JSON.parse(raw); } catch { return null; }
   };
 
-  // 0) 去掉 LLM 偶发�?BOM、回车、首尾空�?
+  // 0) 鍘绘帀 LLM 鍋跺彂鐨?BOM銆佸洖杞︺?侀灏剧┖鐧?
   const text = s.replace(/^\uFEFF/, "").replace(/\r/g, "").trim();
 
-  // 1) 整段
+  // 1) 鏁存
   const a = tryParse(text);
   if (a !== null) return a;
 
@@ -144,7 +144,7 @@ function extractJson(s: string): unknown {
     if (r !== null) return r;
   }
 
-  // 4) 第一�?{ 到最后一�?}
+  // 4) 绗竴涓?{ 鍒版渶鍚庝竴涓?}
   const i = text.indexOf("{");
   const j = text.lastIndexOf("}");
   if (i >= 0 && j > i) {
@@ -152,7 +152,7 @@ function extractJson(s: string): unknown {
     const r = tryParse(slice) ?? tryParse(cleanupJsonLike(slice));
     if (r !== null) return r;
 
-    // 4b) 截断兜底：尾部可能被截断了，尝试逐步去尾�?parse
+    // 4b) 鎴柇鍏滃簳锛氬熬閮ㄥ彲鑳借鎴柇浜嗭紝灏濊瘯閫愭鍘诲熬鍐?parse
     let s2 = slice;
     for (let k = 0; k < 12 && s2.length > 32; k++) {
       s2 = s2.slice(0, -1);
@@ -161,7 +161,7 @@ function extractJson(s: string): unknown {
     }
   }
 
-  throw new Error("LLM 返回内容无法解析�?JSON");
+  throw new Error("LLM 杩斿洖鍐呭鏃犳硶瑙ｆ瀽涓?JSON");
 }
 
 type SceneDraft = {
@@ -178,7 +178,7 @@ function normalizeScenes(raw: unknown): {
   scenes: SceneDraft[];
   characters: { name: string; description: string }[];
 } {
-  if (!raw || typeof raw !== "object") throw new Error("LLM 返回不是 JSON 对象");
+  if (!raw || typeof raw !== "object") throw new Error("LLM 杩斿洖涓嶆槸 JSON 瀵硅薄");
   const r = raw as Record<string, unknown>;
   const rawScenes = Array.isArray(r.scenes) ? r.scenes : [];
   const scenes: SceneDraft[] = rawScenes
@@ -224,17 +224,17 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "请求体非�? }, { status: 400 });
+    return NextResponse.json({ error: "璇锋眰浣撻潪娉? }, { status: 400 });
   }
   const script = typeof body.script === "string" ? body.script : "";
   const cpLen = [...script].length;
   if (cpLen < 30 || cpLen > 5000) {
-    return NextResponse.json({ error: "script 必须 30-5000 �? }, { status: 400 });
+    return NextResponse.json({ error: "script 蹇呴』 30-5000 瀛? }, { status: 400 });
   }
   const style = typeof body.style === "string" ? body.style.slice(0, 30) : undefined;
   const targetSceneCount = Number.isFinite(Number(body.targetSceneCount))
@@ -246,7 +246,7 @@ export async function POST(req: Request) {
         .map((c: any) => ({ name: String(c.name).trim(), description: c.description ? String(c.description) : undefined }))
     : undefined;
 
-  // 找到管线里配置的 LLM 模型（用户私�?> 全局默认�?
+  // 鎵惧埌绠＄嚎閲岄厤缃殑 LLM 妯″瀷锛堢敤鎴风鏈?> 鍏ㄥ眬榛樿锛?
   const pipeline = await getUserComicPipeline(session.id);
   const model = await prisma.model.findUnique({
     where: { slug: pipeline.llmSlug },
@@ -254,7 +254,7 @@ export async function POST(req: Request) {
   });
   if (!model || model.type !== "chat" || !model.enabled) {
     return NextResponse.json(
-      { error: `LLM 模型 '${pipeline.llmSlug}' 不可用，请到 /admin/comic-pipeline 配置` },
+      { error: `LLM 妯″瀷 '${pipeline.llmSlug}' 涓嶅彲鐢紝璇峰埌 /admin/comic-pipeline 閰嶇疆` },
       { status: 503 },
     );
   }
@@ -265,13 +265,13 @@ export async function POST(req: Request) {
   });
   if (!channel) {
     return NextResponse.json(
-      { error: `LLM 模型 '${pipeline.llmSlug}' 没有可用渠道` },
+      { error: `LLM 妯″瀷 '${pipeline.llmSlug}' 娌℃湁鍙敤娓犻亾` },
       { status: 503 },
     );
   }
 
-  // �?LLM（流式收集成完整字符串）。TS 在内�?async 函数里会丢失 `model` 的非空窄化，
-  // 这里固化�?const 让闭包内可放心用�?
+  // 璋?LLM锛堟祦寮忔敹闆嗘垚瀹屾暣瀛楃涓诧級銆俆S 鍦ㄥ唴閮?async 鍑芥暟閲屼細涓㈠け `model` 鐨勯潪绌虹獎鍖栵紝
+  // 杩欓噷鍥哄寲鎴?const 璁╅棴鍖呭唴鍙斁蹇冪敤銆?
   const llmModel = model;
   const llmChannel = channel;
   const startTs = Date.now();
@@ -307,7 +307,7 @@ export async function POST(req: Request) {
     buffer = await callLLM();
   } catch (e) {
     return NextResponse.json(
-      { error: `LLM 调用失败�?{e instanceof Error ? e.message : String(e)}` },
+      { error: `LLM 璋冪敤澶辫触锛?{e instanceof Error ? e.message : String(e)}` },
       { status: 502 },
     );
   }
@@ -320,7 +320,7 @@ export async function POST(req: Request) {
     parseErr = e;
   }
 
-  // 第二轮：解析失败，或解析成功�?scenes 为空 �?用更强的"只输�?JSON"提示重试一�?
+  // 绗簩杞細瑙ｆ瀽澶辫触锛屾垨瑙ｆ瀽鎴愬姛浣?scenes 涓虹┖ 鈫?鐢ㄦ洿寮虹殑"鍙緭鍑?JSON"鎻愮ず閲嶈瘯涓?娆?
   if (!parsed || parsed.scenes.length === 0) {
     console.warn(
       "[comic/scenes/draft] first attempt unusable, retrying. err=",
@@ -343,9 +343,9 @@ export async function POST(req: Request) {
     console.error("[comic/scenes/draft] raw LLM output (first 4000 chars):\n" + buffer.slice(0, 4000));
     return NextResponse.json(
       {
-        error: `LLM 返回格式不合法：${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
+        error: `LLM 杩斿洖鏍煎紡涓嶅悎娉曪細${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
         rawSample: buffer.slice(0, 1500),
-        hint: "请检查所�?LLM 是否能稳定输�?JSON。建议换更强的模型或重试�?,
+        hint: "璇锋鏌ユ墍閫?LLM 鏄惁鑳界ǔ瀹氳緭鍑?JSON銆傚缓璁崲鏇村己鐨勬ā鍨嬫垨閲嶈瘯銆?,
       },
       { status: 502 },
     );
@@ -354,14 +354,14 @@ export async function POST(req: Request) {
     console.error("[comic/scenes/draft] empty scenes; raw:\n" + buffer.slice(0, 4000));
     return NextResponse.json(
       {
-        error: "LLM 没有生成任何分镜，请尝试更具体的剧本或重新提�?,
+        error: "LLM 娌℃湁鐢熸垚浠讳綍鍒嗛暅锛岃灏濊瘯鏇村叿浣撶殑鍓ф湰鎴栭噸鏂版彁浜?,
         rawSample: buffer.slice(0, 1500),
       },
       { status: 502 },
     );
   }
 
-  // 计费（chat token�?
+  // 璁¤垂锛坈hat token锛?
   const billing = await chargeUsage({
     userId: session.id,
     modelId: model.id,

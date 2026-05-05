@@ -10,16 +10,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 800;
 
 /**
- * 多模型协作对�? *
+ * 澶氭ā鍨嬪崗浣滃璇? *
  * Body:
  * {
- *   modelIds: string[]                 // 要并行调用的模型�?~5 个最佳）
- *   messages: {role,content}[]         // 标准 OpenAI 格式
- *   fuserModelId?: string              // 指定一�?融合评审模型"；不�?= 不做融合
- *   channelIdByModelId?: Record<string,string>  // 可选：每个模型指定渠道
+ *   modelIds: string[]                 // 瑕佸苟琛岃皟鐢ㄧ殑妯″瀷锛?~5 涓渶浣筹級
+ *   messages: {role,content}[]         // 鏍囧噯 OpenAI 鏍煎紡
+ *   fuserModelId?: string              // 鎸囧畾涓?涓?铻嶅悎璇勫妯″瀷"锛涗笉浼?= 涓嶅仛铻嶅悎
+ *   channelIdByModelId?: Record<string,string>  // 鍙?夛細姣忎釜妯″瀷鎸囧畾娓犻亾
  * }
  *
- * Response: NDJSON 流（每行一�?JSON 事件�? *   {type:"init", turnId, models:[{id,slug,name,logo}], fuserModelId}
+ * Response: NDJSON 娴侊紙姣忚涓?涓?JSON 浜嬩欢锛? *   {type:"init", turnId, models:[{id,slug,name,logo}], fuserModelId}
  *   {type:"delta", modelId, delta}
  *   {type:"error", modelId, error}
  *   {type:"done",  modelId, inputTokens, outputTokens, cost, latencyMs}
@@ -33,26 +33,26 @@ type Msg = { role: "system" | "user" | "assistant"; content: string };
 
 function buildFusePrompt(userQuestion: string, branches: { label: string; text: string }[]): string {
   const parts = branches
-    .map((b, i) => `【候选答�?${String.fromCharCode(65 + i)} · ${b.label}】\n${b.text.trim() || "(模型未返回有效内�?"}`)
+    .map((b, i) => `銆愬?欓?夌瓟妗?${String.fromCharCode(65 + i)} 路 ${b.label}銆慭n${b.text.trim() || "(妯″瀷鏈繑鍥炴湁鏁堝唴瀹?"}`)
     .join("\n\n");
 
   return (
-    `你是一位严谨的多模型答案评审与融合专家。下面是 ${branches.length} 个主流大模型对同一问题的独立回答。\n` +
-    `你的任务：\n` +
-    `1. 对比各答案，识别事实性错误、过时信息、明显幻觉；\n` +
-    `2. 吸收每个答案里最有价值、最准确的部分；\n` +
-    `3. 用清晰、结构化的方式输出一�?融合后的最佳答�?；\n` +
-    `4. 不要自我介绍、不要评价模型，只输出最终答案本身，语言风格跟随用户问题。\n\n` +
-    `================ 原始用户问题 ================\n${userQuestion}\n\n` +
-    `================ 候选答�?================\n${parts}\n\n` +
-    `================ 融合后的最佳答�?================\n`
+    `浣犳槸涓?浣嶄弗璋ㄧ殑澶氭ā鍨嬬瓟妗堣瘎瀹′笌铻嶅悎涓撳銆備笅闈㈡槸 ${branches.length} 涓富娴佸ぇ妯″瀷瀵瑰悓涓?闂鐨勭嫭绔嬪洖绛斻?俓n` +
+    `浣犵殑浠诲姟锛歕n` +
+    `1. 瀵规瘮鍚勭瓟妗堬紝璇嗗埆浜嬪疄鎬ч敊璇?佽繃鏃朵俊鎭?佹槑鏄惧够瑙夛紱\n` +
+    `2. 鍚告敹姣忎釜绛旀閲屾渶鏈変环鍊笺?佹渶鍑嗙‘鐨勯儴鍒嗭紱\n` +
+    `3. 鐢ㄦ竻鏅般?佺粨鏋勫寲鐨勬柟寮忚緭鍑轰竴涓?铻嶅悎鍚庣殑鏈?浣崇瓟妗?锛沑n` +
+    `4. 涓嶈鑷垜浠嬬粛銆佷笉瑕佽瘎浠锋ā鍨嬶紝鍙緭鍑烘渶缁堢瓟妗堟湰韬紝璇█椋庢牸璺熼殢鐢ㄦ埛闂銆俓n\n` +
+    `================ 鍘熷鐢ㄦ埛闂 ================\n${userQuestion}\n\n` +
+    `================ 鍊欓?夌瓟妗?================\n${parts}\n\n` +
+    `================ 铻嶅悎鍚庣殑鏈?浣崇瓟妗?================\n`
   );
 }
 
 export async function POST(req: Request) {
   let session;
   try { session = await requireUser(); }
-  catch { return NextResponse.json({ error: "请先登录" }, { status: 401 }); }
+  catch { return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 }); }
 
   const body = await req.json().catch(() => null);
   if (
@@ -63,36 +63,36 @@ export async function POST(req: Request) {
     !Array.isArray(body.messages) ||
     body.messages.length === 0
   ) {
-    return NextResponse.json({ error: "参数错误：需�?1~6 �?modelIds 和非�?messages" }, { status: 400 });
+    return NextResponse.json({ error: "鍙傛暟閿欒锛氶渶瑕?1~6 涓?modelIds 鍜岄潪绌?messages" }, { status: 400 });
   }
 
   const messages: Msg[] = body.messages;
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUser) {
-    return NextResponse.json({ error: "messages 中需要至少一�?user 消息" }, { status: 400 });
+    return NextResponse.json({ error: "messages 涓渶瑕佽嚦灏戜竴鏉?user 娑堟伅" }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.id } });
-  if (!user) return NextResponse.json({ error: "用户不存�? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "鐢ㄦ埛涓嶅瓨鍦? }, { status: 400 });
   if (user.balance <= 0) {
-    return NextResponse.json({ error: "余额不足，请先充�? }, { status: 402 });
+    return NextResponse.json({ error: "浣欓涓嶈冻锛岃鍏堝厖鍊? }, { status: 402 });
   }
 
-  // 去重、校验每�?model 都存在且�?chat
+  // 鍘婚噸銆佹牎楠屾瘡涓?model 閮藉瓨鍦ㄤ笖鏄?chat
   const modelIds: string[] = Array.from(new Set(body.modelIds));
   const models = await prisma.model.findMany({
     where: { id: { in: modelIds }, type: "chat" },
     include: { provider: true },
   });
   if (models.length === 0) {
-    return NextResponse.json({ error: "没有可用�?chat 模型" }, { status: 400 });
+    return NextResponse.json({ error: "娌℃湁鍙敤鐨?chat 妯″瀷" }, { status: 400 });
   }
-  // 按用户传进来的顺序排
+  // 鎸夌敤鎴蜂紶杩涙潵鐨勯『搴忔帓
   const orderedModels = modelIds
     .map((id) => models.find((m) => m.id === id))
     .filter((m): m is (typeof models)[number] => Boolean(m));
 
-  // 融合模型（可选）
+  // 铻嶅悎妯″瀷锛堝彲閫夛級
   const fuserModelId: string | null =
     typeof body.fuserModelId === "string" && body.fuserModelId ? body.fuserModelId : null;
   let fuserModel: (typeof models)[number] | null = null;
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
         .then((m) => (m && m.type === "chat" ? m : null)));
   }
 
-  // 预载渠道
+  // 棰勮浇娓犻亾
   const channelIdByModelId: Record<string, string | undefined> =
     body.channelIdByModelId && typeof body.channelIdByModelId === "object"
       ? body.channelIdByModelId
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
         try {
           controller.enqueue(encoder.encode(JSON.stringify({ turnId, ...ev }) + "\n"));
         } catch {
-          // 前端可能已经断开
+          // 鍓嶇鍙兘宸茬粡鏂紑
         }
       };
 
@@ -130,22 +130,22 @@ export async function POST(req: Request) {
           id: m.id,
           slug: m.slug,
           name: m.name,
-          logo: m.provider.logo || "🤖",
+          logo: m.provider.logo || "馃",
           provider: m.provider.name,
         })),
         fuserModelId: fuserModel?.id ?? null,
         fuser: fuserModel
-          ? { id: fuserModel.id, name: fuserModel.name, logo: fuserModel.provider.logo || "🤖" }
+          ? { id: fuserModel.id, name: fuserModel.name, logo: fuserModel.provider.logo || "馃" }
           : null,
       });
 
       let totalCost = 0;
 
-      // 并行跑每个模�?      const perModelResults = await Promise.all(
+      // 骞惰璺戞瘡涓ā鍨?      const perModelResults = await Promise.all(
         orderedModels.map(async (model) => {
           const chId = channelIdByModelId[model.id] ?? null;
           const channel = await pickChannel(model.id, chId);
-          // 每模型显式指定渠道且命中时，固定该渠道，不自动降�?          const fallbackChannels = channel ? (chId && channel.id === chId ? [] : await getChannelsForModel(model.id)) : [];
+          // 姣忔ā鍨嬫樉寮忔寚瀹氭笭閬撲笖鍛戒腑鏃讹紝鍥哄畾璇ユ笭閬擄紝涓嶈嚜鍔ㄩ檷绾?          const fallbackChannels = channel ? (chId && channel.id === chId ? [] : await getChannelsForModel(model.id)) : [];
 
           const started = Date.now();
           let acc = "";
@@ -186,7 +186,7 @@ export async function POST(req: Request) {
 
           const latencyMs = Date.now() - started;
 
-          // 计费（失败也�?usage �?status=failed，cost=0�?          let cost = 0;
+          // 璁¤垂锛堝け璐ヤ篃璁?usage 浣?status=failed锛宑ost=0锛?          let cost = 0;
           try {
             const billing = await chargeUsage({
               userId: session!.id,
@@ -222,17 +222,17 @@ export async function POST(req: Request) {
 
           return {
             modelId: model.id,
-            label: `${model.name}�?{model.provider.name}）`,
+            label: `${model.name}锛?{model.provider.name}锛塦,
             text: acc,
             ok: !hadError,
           };
         }),
       );
 
-      // 融合（需要至�?2 个成功的 + 指定�?fuser�?      const successResults = perModelResults.filter((r) => r.ok && r.text.trim().length > 0);
+      // 铻嶅悎锛堥渶瑕佽嚦灏?2 涓垚鍔熺殑 + 鎸囧畾浜?fuser锛?      const successResults = perModelResults.filter((r) => r.ok && r.text.trim().length > 0);
       if (fuserModel && successResults.length >= 2) {
         const fuser = fuserModel;
-        emit({ type: "fuse-start", modelId: fuser.id, name: fuser.name, logo: fuser.provider.logo || "🤖" });
+        emit({ type: "fuse-start", modelId: fuser.id, name: fuser.name, logo: fuser.provider.logo || "馃" });
 
         const fPrompt = buildFusePrompt(lastUser.content, successResults);
         const fChannel = await pickChannel(fuser.id, null);
@@ -245,7 +245,7 @@ export async function POST(req: Request) {
           fErrMsg = "";
 
         try {
-          // 保留原始对话中的历史（去掉最后一�?user），外加一个综�?user 消息�?          // �?fuser 依然能看到上下文，但最后是明确�?请融�?请求�?          const historyExceptLast = messages.slice(0, -1);
+          // 淇濈暀鍘熷瀵硅瘽涓殑鍘嗗彶锛堝幓鎺夋渶鍚庝竴鏉?user锛夛紝澶栧姞涓?涓患鍚?user 娑堟伅锛?          // 璁?fuser 渚濈劧鑳界湅鍒颁笂涓嬫枃锛屼絾鏈?鍚庢槸鏄庣‘鐨?璇疯瀺鍚?璇锋眰銆?          const historyExceptLast = messages.slice(0, -1);
           const fuseMessages: Msg[] = [
             ...historyExceptLast,
             { role: "user", content: fPrompt },
@@ -306,7 +306,7 @@ export async function POST(req: Request) {
         });
       }
 
-      // 读取最终余�?      const updated = await prisma.user.findUnique({ where: { id: session!.id } });
+      // 璇诲彇鏈?缁堜綑棰?      const updated = await prisma.user.findUnique({ where: { id: session!.id } });
       emit({
         type: "all-done",
         totalCost: Math.round(totalCost * 10000) / 10000,
