@@ -82,7 +82,7 @@ function buildUserPrompt(opts: {
       lines.push(`- ${c.name}${c.description ? "锛? + c.description : ""}`);
     }
   }
-  lines.push("", "鍓ф湰鍘熸枃锛?, opts.script);
+  lines.push("", "error", opts.script);
   return lines.join("\n");
 }
 
@@ -110,7 +110,7 @@ function cleanupJsonLike(slice: string): string {
       // 鍧楁敞閲?/* ... */
       .replace(/\/\*[\s\S]*?\*\//g, "")
       // 瀛楃涓查噷鐨勭湡瀹炴崲琛?鈫?\n锛堜粎鍦ㄨ鍙屽紩鍙峰寘瑁圭殑鑼冨洿鍐呭仛鏈?灏忔浛鎹級
-      .replace(/"(?:[^"\\]|\\.)*"/g, (m) => m.replace(/\r?\n/g, "\\n"))
+      .replace(/"(?:[^"\\]|\\.)*"error", "\\n"))
       // 鏁扮粍/瀵硅薄灏鹃殢閫楀彿  ,]  ,}
       .replace(/,(\s*[}\]])/g, "$1")
   );
@@ -229,12 +229,12 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "璇锋眰浣撻潪娉? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
   const script = typeof body.script === "string" ? body.script : "";
   const cpLen = [...script].length;
   if (cpLen < 30 || cpLen > 5000) {
-    return NextResponse.json({ error: "script 蹇呴』 30-5000 瀛? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
   const style = typeof body.style === "string" ? body.style.slice(0, 30) : undefined;
   const targetSceneCount = Number.isFinite(Number(body.targetSceneCount))
@@ -345,7 +345,7 @@ export async function POST(req: Request) {
       {
         error: `LLM 杩斿洖鏍煎紡涓嶅悎娉曪細${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
         rawSample: buffer.slice(0, 1500),
-        hint: "璇锋鏌ユ墍閫?LLM 鏄惁鑳界ǔ瀹氳緭鍑?JSON銆傚缓璁崲鏇村己鐨勬ā鍨嬫垨閲嶈瘯銆?,
+        hint: "error",
       },
       { status: 502 },
     );
@@ -354,7 +354,7 @@ export async function POST(req: Request) {
     console.error("[comic/scenes/draft] empty scenes; raw:\n" + buffer.slice(0, 4000));
     return NextResponse.json(
       {
-        error: "LLM 娌℃湁鐢熸垚浠讳綍鍒嗛暅锛岃灏濊瘯鏇村叿浣撶殑鍓ф湰鎴栭噸鏂版彁浜?,
+        error: "error",
         rawSample: buffer.slice(0, 1500),
       },
       { status: 502 },

@@ -123,7 +123,7 @@ export async function POST(req: Request) {
       prompt: combinedPrompt,
       params: {
         source: "comic-auto:render",
-        sourceLabel: "閼奉亜濮╁⿻顐ゆ暰閺呴缚鍏樻担?,
+        sourceLabel: "error",
         batchId,
         aspectRatio,
         panelCount: drafts.length,

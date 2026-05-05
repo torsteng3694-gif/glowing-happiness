@@ -15,7 +15,7 @@ export const maxDuration = 800;
  * {
  *   modelIds: string[]                 // 瑕佸苟琛岃皟鐢ㄧ殑妯″瀷锛?~5 涓渶浣筹級
  *   messages: {role,content}[]         // 鏍囧噯 OpenAI 鏍煎紡
- *   fuserModelId?: string              // 鎸囧畾涓?涓?铻嶅悎璇勫妯″瀷"锛涗笉浼?= 涓嶅仛铻嶅悎
+ *   fuserModelId?: string              // 鎸囧畾涓?涓?铻嶅悎璇勫妯″瀷"error"
  *   channelIdByModelId?: Record<string,string>  // 鍙?夛細姣忎釜妯″瀷鎸囧畾娓犻亾
  * }
  *
@@ -33,7 +33,7 @@ type Msg = { role: "system" | "user" | "assistant"; content: string };
 
 function buildFusePrompt(userQuestion: string, branches: { label: string; text: string }[]): string {
   const parts = branches
-    .map((b, i) => `銆愬?欓?夌瓟妗?${String.fromCharCode(65 + i)} 路 ${b.label}銆慭n${b.text.trim() || "(妯″瀷鏈繑鍥炴湁鏁堝唴瀹?"}`)
+    .map((b, i) => `銆愬?欓?夌瓟妗?${String.fromCharCode(65 + i)} 路 ${b.label}銆慭n${b.text.trim() || "error"}`)
     .join("\n\n");
 
   return (
@@ -73,9 +73,9 @@ export async function POST(req: Request) {
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.id } });
-  if (!user) return NextResponse.json({ error: "鐢ㄦ埛涓嶅瓨鍦? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "error" }, { status: 400 });
   if (user.balance <= 0) {
-    return NextResponse.json({ error: "浣欓涓嶈冻锛岃鍏堝厖鍊? }, { status: 402 });
+    return NextResponse.json({ error: "error" }, { status: 402 });
   }
 
   // 鍘婚噸銆佹牎楠屾瘡涓?model 閮藉瓨鍦ㄤ笖鏄?chat

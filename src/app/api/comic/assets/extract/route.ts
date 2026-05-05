@@ -42,22 +42,22 @@ JSON schema:
   "characters": [
     {
       "name":         "string 鈮?10 chars (涓枃浼樺厛)",
-      "description":  "string 鈥?澶栬矊 / 鎬ф牸 / 鏈嶉グ / 骞撮緞绛夊叧閿弿杩?,
-      "imagePrompt":  "string 鈥?閫傚悎鐢ㄤ簬瑙掕壊绔嬬粯 / 涓夎鍥剧敓鎴愮殑涓枃鎻愮ず璇嶏紝<= 200 瀛?
+      "description":  "error",
+      "imagePrompt":  "error"
     }
   ],
   "scenes": [
     {
       "name":         "string 鈮?10 chars",
       "description":  "string 鈥?鏃朵唬 / 姘涘洿 / 鍏抽敭瑙嗚鍏冪礌",
-      "imagePrompt":  "string 鈥?閫傚悎鐢ㄤ簬鍦烘櫙鍥剧敓鎴愮殑涓枃鎻愮ず璇?
+      "imagePrompt":  "error"
     }
   ],
   "props": [
     {
       "name":         "string 鈮?10 chars",
       "description":  "error",
-      "imagePrompt":  "string 鈥?閫傚悎鐢ㄤ簬閬撳叿鍥剧敓鎴愮殑涓枃鎻愮ず璇?
+      "imagePrompt":  "error"
     }
   ]
 }
@@ -75,7 +75,7 @@ Output: ONLY the JSON. Begin with { and end with }.`;
 function buildUserPrompt(script: string, style?: string): string {
   const lines: string[] = [];
   if (style) lines.push(`瑙嗛椋庢牸锛?{style}`);
-  lines.push("鍓ф湰鍘熸枃锛?, script);
+  lines.push("error", script);
   return lines.join("\n");
 }
 
@@ -88,7 +88,7 @@ function cleanupJsonLike(slice: string): string {
     .replace(/[\uFEFF\u200B-\u200D]/g, "")
     .replace(/(^|[^:"'])\/\/[^\n]*/g, "$1")
     .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/"(?:[^"\\]|\\.)*"/g, (m) => m.replace(/\r?\n/g, "\\n"))
+    .replace(/"(?:[^"\\]|\\.)*"error", "\\n"))
     .replace(/,(\s*[}\]])/g, "$1");
 }
 
@@ -144,12 +144,12 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "璇锋眰浣撻潪娉? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
   const script = typeof body.script === "string" ? body.script : "";
   const cpLen = [...script].length;
   if (cpLen < 30 || cpLen > 5000) {
-    return NextResponse.json({ error: "script 蹇呴』 30-5000 瀛? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
   const style = typeof body.style === "string" ? body.style.slice(0, 30) : undefined;
 

@@ -32,12 +32,12 @@ export async function POST(req: Request) {
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.id } });
-  if (!user) return NextResponse.json({ error: "鐢ㄦ埛涓嶅瓨鍦? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "error" }, { status: 400 });
 
   const model = await prisma.model.findUnique({
     where: { id: body.modelId }, include: { provider: true },
   });
-  if (!model || model.type !== "video") return NextResponse.json({ error: "妯″瀷涓嶅彲鐢? }, { status: 400 });
+  if (!model || model.type !== "video") return NextResponse.json({ error: "error" }, { status: 400 });
 
   // 缁熶竴瑙嗛鍙傛暟鏋勯?狅細
   // - 涓嶅悓妯″瀷锛坴eo / grok / 鍗虫ⅵ / 鍙伒 / SD2.0 绛夛級蹇呭～瀛楁涓嶅悓
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
           where: { slug: "grok-video-3", type: "video", enabled: true },
           include: { provider: true },
         });
-        if (!grok) throw new Error("鍏滃簳妯″瀷 grok-video-3 涓嶅彲鐢?);
+        if (!grok) throw new Error("error");
 
         const grokBuilt = buildVideoRawParams({
           modelSlug: grok.slug,
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
         const raw2 = e2 instanceof Error ? e2.message : String(e2);
         const hint =
           /鍙傛暟鏍煎紡閿欒|鏍煎紡涓嶅|invalid image|unreachable/i.test(raw2)
-            ? "锛堜笂娓告棤娉曡闂甯у浘锛岃鐢ㄥ彲鍏綉璁块棶鐨?URL锛屾垨閰嶇疆 PUBLIC_BASE_URL 鎸囧悜鍏綉闅ч亾锛?
+            ? "error"
             : "";
         console.error("[api/video] upstream failed with fallback:", raw, "=>", raw2);
         return NextResponse.json({ error: `瑙嗛鐢熸垚澶辫触锛?{raw2}${hint}` }, { status: 502 });
@@ -139,7 +139,7 @@ export async function POST(req: Request) {
     } else {
       const hint =
         /鍙傛暟鏍煎紡閿欒|鏍煎紡涓嶅|invalid image|unreachable/i.test(raw)
-          ? "锛堜笂娓告棤娉曡闂甯у浘锛岃鐢ㄥ彲鍏綉璁块棶鐨?URL锛屾垨閰嶇疆 PUBLIC_BASE_URL 鎸囧悜鍏綉闅ч亾锛?
+          ? "error"
           : "";
       console.error("[api/video] upstream failed:", raw);
       return NextResponse.json(

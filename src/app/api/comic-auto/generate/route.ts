@@ -94,9 +94,9 @@ export async function POST(req: Request) {
     "}",
     "",
     `閸掓稒鍓伴敍?{prompt}`,
-    "缁撅附娼敍?,
     "error",
-    "- 閻㈠娼版稉楦跨箾鐠愵垰褰婃禍?,
+    "error",
+    "error",
     "error",
   ].join("\n");
 
@@ -231,7 +231,7 @@ export async function POST(req: Request) {
       prompt: combinedPrompt,
       params: {
         source: "comic-auto:generate",
-        sourceLabel: "閼奉亜濮╁⿻顐ゆ暰閺呴缚鍏樻担?,
+        sourceLabel: "error",
         batchId,
         aspectRatio,
         panelCount,

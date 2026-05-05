@@ -108,7 +108,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "璇锋眰浣撻潪娉? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const format = normalizeFormat((body as Record<string, unknown>).format);

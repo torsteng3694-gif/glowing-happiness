@@ -33,12 +33,12 @@ export async function POST(req: Request) {
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.id } });
-  if (!user) return NextResponse.json({ error: "鐢ㄦ埛涓嶅瓨鍦? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "error" }, { status: 400 });
 
   const model = await prisma.model.findUnique({
     where: { id: body.modelId }, include: { provider: true },
   });
-  if (!model || model.type !== "image") return NextResponse.json({ error: "妯″瀷涓嶅彲鐢? }, { status: 400 });
+  if (!model || model.type !== "image") return NextResponse.json({ error: "error" }, { status: 400 });
 
   const channelId: string | null = typeof body.channelId === "string" ? body.channelId : null;
   const channel = await pickChannel(model.id, channelId);
@@ -71,9 +71,9 @@ export async function POST(req: Request) {
     const raw = e instanceof Error ? e.message : String(e);
     const hint =
       /鍙傛暟鏍煎紡閿欒|鏍煎紡涓嶅|invalid image|unreachable/i.test(raw)
-        ? "锛堜笂娓镐笉鎺ュ彈 base64锛屾垨鏃犳硶璁块棶鍙傝?冨浘 URL銆傝浣跨敤鍙叕缃戣闂殑鍥剧墖 URL锛屾垨閰嶇疆 PUBLIC_BASE_URL 鎸囧悜浣犵殑鍏綉闅ч亾锛?
+        ? "error"
         : /context deadline exceeded|client\.timeout|timeout|timed out|etimedout|econnreset/i.test(raw)
-          ? "锛堜笂娓稿綋鍓嶇箒蹇?瓒呮椂锛岀郴缁熷凡鑷姩閲嶈瘯锛涗粛澶辫触鍙敼鐢ㄨ嚜鍔ㄦ笭閬撴垨绋嶅悗閲嶈瘯锛?
+          ? "error"
         : "";
     console.error("[api/image] upstream failed:", raw);
     return NextResponse.json(
