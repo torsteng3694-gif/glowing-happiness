@@ -26,7 +26,7 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 800; // Vercel Hobby 上限
+export const maxDuration = ;
 
 async function ensureOwn(userId: string, projectId: string) {
   const p = await prisma.comicProject.findUnique({
