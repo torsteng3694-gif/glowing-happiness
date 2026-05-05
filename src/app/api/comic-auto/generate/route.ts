@@ -8,7 +8,7 @@ import { rewriteLocalRefsToBase64 } from "@/lib/media-ref";
 import { saveMediaAssets } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
-export const maxDuration = 600;
+export const maxDuration = 300; // Vercel Hobby 上限
 
 type KeywordAnalysis = {
   styleKeywords: string[];

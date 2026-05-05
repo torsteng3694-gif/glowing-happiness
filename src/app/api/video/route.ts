@@ -10,7 +10,7 @@ import { buildVideoRawParams } from "@/lib/comic-agent/helpers";
 
 export const runtime = "nodejs";
 // 视频异步任务（grok-video-3 等）最长可能要 10 分钟
-export const maxDuration = 900;
+export const maxDuration = 300; // Vercel Hobby 上限
 
 export async function POST(req: Request) {
   let session;

@@ -10,7 +10,7 @@ import { rewriteLocalRefsToBase64 } from "@/lib/media-ref";
 
 export const runtime = "nodejs";
 // 异步图像（nano-banana-pro 等）+ 图生图可能要 1~3 分钟
-export const maxDuration = 600;
+export const maxDuration = 300; // Vercel Hobby 上限
 
 export async function POST(req: Request) {
   let session;
