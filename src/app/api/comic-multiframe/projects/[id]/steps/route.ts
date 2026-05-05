@@ -14,7 +14,7 @@ import { runOneStep, skipOneStep, runProjectAuto } from "@/lib/comic-agent/engin
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // 单步可能跑很久（关键帧 / 视频）
-export const maxDuration = ;
+export const maxDuration = 800;
 
 export async function POST(
   req: Request,

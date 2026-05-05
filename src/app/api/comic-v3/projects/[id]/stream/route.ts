@@ -13,7 +13,7 @@ import { isProjectRunningV3 } from "@/lib/comic-v3/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = ;
+export const maxDuration = 800;
 
 export async function GET(
   _req: Request,

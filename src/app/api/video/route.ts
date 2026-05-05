@@ -10,7 +10,7 @@ import { buildVideoRawParams } from "@/lib/comic-agent/helpers";
 
 export const runtime = "nodejs";
 // 瑙嗛寮傛浠诲姟锛坓rok-video-3 绛夛級鏈?闀垮彲鑳借 10 鍒嗛挓
-export const maxDuration = ;
+export const maxDuration = 800;
 
 export async function POST(req: Request) {
   let session;

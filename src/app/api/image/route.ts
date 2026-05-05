@@ -10,7 +10,7 @@ import { rewriteLocalRefsToBase64 } from "@/lib/media-ref";
 
 export const runtime = "nodejs";
 // 寮傛鍥惧儚锛坣ano-banana-pro 绛夛級+ 鍥剧敓鍥惧彲鑳借 1~3 鍒嗛挓
-export const maxDuration = ;
+export const maxDuration = 800;
 
 export async function POST(req: Request) {
   let session;

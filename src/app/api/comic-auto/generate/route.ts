@@ -8,7 +8,7 @@ import { rewriteLocalRefsToBase64 } from "@/lib/media-ref";
 import { saveMediaAssets } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
-export const maxDuration = ;
+export const maxDuration = 800;
 
 type KeywordAnalysis = {
   styleKeywords: string[];

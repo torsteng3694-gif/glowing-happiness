@@ -14,7 +14,7 @@ import { generateAssetImagesForCharacter } from "@/lib/comic-agent/shot-helpers"
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = ;
+export const maxDuration = 800;
 
 type RefineOutput = {
   added: { type: "character" | "scene" | "prop" | "skill"; name: string; description: string }[];

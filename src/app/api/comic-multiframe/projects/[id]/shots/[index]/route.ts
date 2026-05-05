@@ -26,7 +26,7 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = ;
+export const maxDuration = 800;
 
 async function ensureOwn(userId: string, projectId: string) {
   const p = await prisma.comicProject.findUnique({

@@ -12,7 +12,7 @@ import { isProjectRunning } from "@/lib/comic-agent/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = ;
+export const maxDuration = 800;
 
 export async function GET(
   _req: Request,
