@@ -16,17 +16,28 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const session = await getSession();
   const { t } = await getT();
-  const [chatCount, imageCount, videoCount, models] = await Promise.all([
-    prisma.model.count({ where: { type: "chat", enabled: true } }),
-    prisma.model.count({ where: { type: "image", enabled: true } }),
-    prisma.model.count({ where: { type: "video", enabled: true } }),
-    prisma.model.findMany({
-      where: { enabled: true },
-      include: { provider: true },
-      orderBy: { createdAt: "asc" },
-      take: 12,
-    }),
-  ]);
+
+  // 数据库未就绪时（首次部署、表未建、连接失败）不让首页崩溃，
+  // 用空数据降级渲染。修复后下次刷新自然恢复。
+  let chatCount = 0;
+  let imageCount = 0;
+  let videoCount = 0;
+  let models: Awaited<ReturnType<typeof prisma.model.findMany>> = [];
+  try {
+    [chatCount, imageCount, videoCount, models] = await Promise.all([
+      prisma.model.count({ where: { type: "chat", enabled: true } }),
+      prisma.model.count({ where: { type: "image", enabled: true } }),
+      prisma.model.count({ where: { type: "video", enabled: true } }),
+      prisma.model.findMany({
+        where: { enabled: true },
+        include: { provider: true },
+        orderBy: { createdAt: "asc" },
+        take: 12,
+      }),
+    ]);
+  } catch (err) {
+    console.error("[home] DB query failed, rendering with empty fallback:", err);
+  }
 
   return (
     <div className="min-h-screen bg-white">
