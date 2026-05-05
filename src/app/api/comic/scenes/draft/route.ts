@@ -4,7 +4,7 @@
  * POST /api/comic/scenes/draft
  *   body: {
  *     script: string,         // 蹇呭～锛屽師濮嬪墽鏈枃鏈?
- *     style?: string,         // 椋庢牸鎻忚堪锛屼緥濡?"2D鍔ㄧ敾" / "鐪熶汉鍐欏疄"
+ *     style?: string,         // 椋庢牸鎻忚堪锛屼緥濡?"2D鍔ㄧ敾" / "error"
  *     targetSceneCount?: number, // 鏈熸湜鍒嗛暅鏁帮紱涓嶄紶鍒?LLM 鑷鍐冲畾
  *     characters?: { name: string; description?: string }[], // 鍙?夛紝宸叉湁鐨勮鑹叉竻鍗曪紙璁?LLM 澶嶇敤鍚嶅瓧锛?
  *   }
@@ -224,7 +224,7 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 });
+    return NextResponse.json({ error: "error" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);

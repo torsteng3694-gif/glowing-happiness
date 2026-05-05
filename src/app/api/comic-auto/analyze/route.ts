@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 });
+    return NextResponse.json({ error: "error" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   const llmFallbacks = llmChannel ? await getChannelsForModel(llmModel.id) : [];
 
   const system = [
-    "浣犳槸銆屾极鐢诲叧閿瘝鏅鸿兘浣撱?嶏紝璐熻矗鎶婄敤鎴峰垱鎰忔媶鎴愬彲鐢熸垚婕敾鐨勫叧閿瘝涓庡垎闀溿??,
+    "error",
     "蹇呴』浠呰緭鍑?JSON锛屼笉瑕佽緭鍑?markdown锛屼笉瑕佽В閲娿??,
   ].join("\n");
   const userPrompt = [
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     '  "moodKeywords": ["..."],',
     '  "cameraKeywords": ["..."],',
     '  "panels": [',
-    '    {"index":1,"title":"鏍兼爣棰?,"caption":"瀛楀箷鏂囨","imagePrompt":"鍙洿鎺ョ敤浜庢枃鐢熷浘鐨勮嫳鏂囨彁绀鸿瘝"}',
+    '    {"index":1,"title":"鏍兼爣棰?,"caption":"瀛楀箷鏂囨","imagePrompt":"error"}',
     "  ]",
     "}",
     "",

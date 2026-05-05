@@ -54,7 +54,7 @@ export const IMAGE_PRESETS: ImagePresetDef[] = [
     description: "Nano Banana Pro，画面精致细节丰富",
     imageSlug: "gemini-3-pro-image-preview",
     accentClass: "bg-violet-50 text-violet-700 border-violet-200",
-    bestFor: "成片 / 商业作品 / 角色立绘",
+    bestFor: "error",
   },
   {
     slug: "midjourney",

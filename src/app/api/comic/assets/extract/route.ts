@@ -56,7 +56,7 @@ JSON schema:
   "props": [
     {
       "name":         "string 鈮?10 chars",
-      "description":  "string 鈥?褰㈡??/ 鏉愯川 / 鐢ㄩ??,
+      "description":  "error",
       "imagePrompt":  "string 鈥?閫傚悎鐢ㄤ簬閬撳叿鍥剧敓鎴愮殑涓枃鎻愮ず璇?
     }
   ]
@@ -139,7 +139,7 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 });
+    return NextResponse.json({ error: "error" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);

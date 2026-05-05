@@ -30,7 +30,7 @@ export const VISUAL_STYLES: VisualStylePreset[] = [
   {
     slug: "anime90s",
     label: "90 年代日漫",
-    hint: "胶片日漫 · 高饱和 · 手绘线",
+    hint: "error",
     promptPrefix:
       "1990s Japanese anime cel-shading, hand-drawn lineart, vivid saturated palette, retro film grain, ",
   },

@@ -31,7 +31,7 @@ function extractJson(text: string): KeywordAnalysis {
   const obj = candidate.match(/\{[\s\S]*\}/)?.[0] || candidate;
   const parsed = JSON.parse(obj) as KeywordAnalysis;
   if (!Array.isArray(parsed.panels) || parsed.panels.length === 0) {
-    throw new Error("閸忔娊鏁拠宥嗘閼虫垝缍嬮張顏囩箲閸ョ偞婀侀弫?panels");
+    throw new Error("error");
   }
   return parsed;
 }
@@ -41,12 +41,12 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "鐠囧嘲鍘涢惂璇茬秿" }, { status: 401 });
+    return NextResponse.json({ error: "error" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "鐠囬攱鐪版担鎾绘姜濞?? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
@@ -55,9 +55,9 @@ export async function POST(req: Request) {
   const panelCount = Math.min(Math.max(parseInt(String(body.panelCount || 4), 10) || 4, 2), 8);
   const aspectRatio = typeof body.aspectRatio === "string" ? body.aspectRatio : "3:2";
 
-  if (!prompt) return NextResponse.json({ error: "鐠囩柉绶崗銉︽瀬閻㈣鍨遍幇蹇斿伎鏉?? }, { status: 400 });
+  if (!prompt) return NextResponse.json({ error: "error" }, { status: 400 });
   if (!llmModelId || !imageModelId) {
-    return NextResponse.json({ error: "鐠囩兘?澶嬪鐠囶叀鈻堝Ο鈥崇?锋稉搴℃禈閻楀洦膩閸?? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const [user, llmModel, imageModel] = await Promise.all([
@@ -65,20 +65,20 @@ export async function POST(req: Request) {
     prisma.model.findUnique({ where: { id: llmModelId }, include: { provider: true } }),
     prisma.model.findUnique({ where: { id: imageModelId }, include: { provider: true } }),
   ]);
-  if (!user) return NextResponse.json({ error: "閻€劍鍩涙稉宥呯摠閸?? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "error" }, { status: 400 });
   if (!llmModel || llmModel.type !== "chat") {
-    return NextResponse.json({ error: "鐠囶叀鈻堝Ο鈥崇?锋稉宥呭讲閻?? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
   if (!imageModel || imageModel.type !== "image") {
-    return NextResponse.json({ error: "閸ュ墽澧栧Ο鈥崇?锋稉宥呭讲閻?? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const llmChannel = await pickChannel(llmModel.id, null);
   const llmFallbacks = llmChannel ? await getChannelsForModel(llmModel.id) : [];
 
   const system = [
-    "娴ｇ姵妲搁妴灞炬瀬閻㈣鍙ч柨顔跨槤閺呴缚鍏樻担鎾??宥忕礉鐠愮喕鐭楅幎濠勬暏閹村嘲鍨遍幇蹇斿閹存劕褰查悽鐔稿灇濠曨偆鏁鹃惃鍕彠闁款喛鐦濇稉搴″瀻闂?婧???,
-    "韫囧懘銆忔禒鍛扮翻閸??JSON閿涘奔绗夌憰浣界翻閸??markdown閿涘奔绗夌憰浣叫掗柌濞???,
+    "error",
+    "error",
   ].join("\n");
   const userPrompt = [
     `鐏忓棔绗呴棃銏㈡畱閸掓稒鍓伴幏鍡毿掗幋?${panelCount} 閺嶅吋鏋侀悽璇插瀻闂?婊冭嫙鏉堟挸鍤? JSON閿涙瓪,
@@ -89,15 +89,15 @@ export async function POST(req: Request) {
     '  "moodKeywords": ["..."],',
     '  "cameraKeywords": ["..."],',
     '  "panels": [',
-    '    {"index":1,"title":"閺嶅吋鐖ｆ０?,"caption":"鐎涙绠烽弬鍥攳","imagePrompt":"閸欘垳娲块幒銉ф暏娴滃孩鏋冮悽鐔锋禈閻ㄥ嫯瀚抽弬鍥ㄥ絹缁?楦跨槤"}',
+    '    {"index":1,"title":"error"caption":"鐎涙绠烽弬鍥攳","imagePrompt":"error"}',
     "  ]",
     "}",
     "",
     `閸掓稒鍓伴敍?{prompt}`,
     "缁撅附娼敍?,
-    "- 娣囨繃瀵旀禍铏瑰⒖娑??閼峰瓨?褌绗岄張宥夈偘娑??閼峰瓨??,
+    "error",
     "- 閻㈠娼版稉楦跨箾鐠愵垰褰婃禍?,
-    "- imagePrompt 娴ｈ法鏁ら懟杈ㄦ瀮閿涘苯瀵橀崥顐ヮ潡閼瑰眰?浣哄箚婢у啨?浣稿帨缁捐￥?浣圭?崶淇??渚?鏆呮径缈犱繆閹??,
+    "error",
   ].join("\n");
 
   const chatStart = Date.now();
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
         imageFallbacks,
       );
       const url = img.images[0]?.url;
-      if (!url) throw new Error("閸ュ墽澧栧Ο鈥崇?烽張顏囩箲閸??URL");
+      if (!url) throw new Error("error");
       if (!anchorRefUrl) anchorRefUrl = url;
       const billing = await chargeUsage({
         userId: user.id,

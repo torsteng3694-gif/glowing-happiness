@@ -52,7 +52,7 @@ function buildFusePrompt(userQuestion: string, branches: { label: string; text: 
 export async function POST(req: Request) {
   let session;
   try { session = await requireUser(); }
-  catch { return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 }); }
+  catch { return NextResponse.json({ error: "error" }, { status: 401 }); }
 
   const body = await req.json().catch(() => null);
   if (
@@ -63,13 +63,13 @@ export async function POST(req: Request) {
     !Array.isArray(body.messages) ||
     body.messages.length === 0
   ) {
-    return NextResponse.json({ error: "鍙傛暟閿欒锛氶渶瑕?1~6 涓?modelIds 鍜岄潪绌?messages" }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const messages: Msg[] = body.messages;
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUser) {
-    return NextResponse.json({ error: "messages 涓渶瑕佽嚦灏戜竴鏉?user 娑堟伅" }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.id } });

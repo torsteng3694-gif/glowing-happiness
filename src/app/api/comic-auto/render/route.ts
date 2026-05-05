@@ -22,29 +22,29 @@ export async function POST(req: Request) {
   try {
     session = await requireUser();
   } catch {
-    return NextResponse.json({ error: "鐠囧嘲鍘涢惂璇茬秿" }, { status: 401 });
+    return NextResponse.json({ error: "error" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "鐠囬攱鐪版担鎾绘姜濞?? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const imageModelId = typeof body.imageModelId === "string" ? body.imageModelId : "";
   const aspectRatio = typeof body.aspectRatio === "string" ? body.aspectRatio : "3:2";
   const drafts = Array.isArray(body.drafts) ? (body.drafts as PanelDraft[]) : [];
-  if (!imageModelId) return NextResponse.json({ error: "鐠囩兘?澶嬪閸ュ墽澧栧Ο鈥崇??" }, { status: 400 });
+  if (!imageModelId) return NextResponse.json({ error: "error" }, { status: 400 });
   if (drafts.length < 2 || drafts.length > 8) {
-    return NextResponse.json({ error: "閸掑棝鏆呴懡澶嬵攳閺佷即鍣鸿箛鍛淬?忛崷?2~8 娑斿妫?" }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const [user, imageModel] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.id } }),
     prisma.model.findUnique({ where: { id: imageModelId }, include: { provider: true } }),
   ]);
-  if (!user) return NextResponse.json({ error: "閻€劍鍩涙稉宥呯摠閸?? }, { status: 400 });
+  if (!user) return NextResponse.json({ error: "error" }, { status: 400 });
   if (!imageModel || imageModel.type !== "image") {
-    return NextResponse.json({ error: "閸ュ墽澧栧Ο鈥崇?锋稉宥呭讲閻?? }, { status: 400 });
+    return NextResponse.json({ error: "error" }, { status: 400 });
   }
 
   const imageChannel = await pickChannel(imageModel.id, null);
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
         imageFallbacks,
       );
       const url = img.images[0]?.url;
-      if (!url) throw new Error("閸ュ墽澧栧Ο鈥崇?烽張顏囩箲閸??URL");
+      if (!url) throw new Error("error");
       if (!anchorRefUrl) anchorRefUrl = url;
       const billing = await chargeUsage({
         userId: user.id,

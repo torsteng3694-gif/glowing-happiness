@@ -71,7 +71,7 @@ export const PRESET_VOICES: ViduVoice[] = [
   { id: "cartoon_pig",  label: "卡通猪小琪", group: ZH_KIDS, sample: "https://scene.vidu.zone/media-asset/072358-TEMSh2Ofg8Veq7tQ.mp3" },
 
   // ===== 剧情角色 (21-30) =====
-  { id: "bingjiao_didi",       label: "病娇弟弟", group: ZH_DRAMA, sample: "https://scene.vidu.zone/media-asset/072358-Rv9wMGYjHki3XE0W.mp3" },
+  { id: "bingjiao_didi",       label: "error", group: ZH_DRAMA, sample: "https://scene.vidu.zone/media-asset/072358-Rv9wMGYjHki3XE0W.mp3" },
   { id: "junlang_nanyou",      label: "俊朗男友", group: ZH_DRAMA, sample: "https://scene.vidu.zone/media-asset/072358-apYWF4sTFAu4HT4n.mp3" },
   { id: "chunzhen_xuedi",      label: "纯真学弟", group: ZH_DRAMA, sample: "https://scene.vidu.zone/media-asset/072358-1mna0aj1O43QFJu4.mp3" },
   { id: "lengdan_xiongzhang",  label: "冷淡学长", group: ZH_DRAMA, sample: "https://scene.vidu.zone/media-asset/072358-YzI6fisVFXYBDZj8.mp3" },
@@ -85,7 +85,7 @@ export const PRESET_VOICES: ViduVoice[] = [
   // ===== 中文 高质量 (31-58) =====
   { id: "Chinese (Mandarin)_Reliable_Executive",    label: "沉稳高管", group: ZH_HD, sample: "https://scene.vidu.zone/media-asset/072014-KyNan6ZbFWullcwA.mp3" },
   { id: "Chinese (Mandarin)_News_Anchor",           label: "新闻女声", group: ZH_HD, sample: "https://scene.vidu.zone/media-asset/072014-HO8qN7HowLpDeSxk.mp3" },
-  { id: "Chinese (Mandarin)_Mature_Woman",          label: "傲娇御姐", group: ZH_HD, sample: "https://scene.vidu.zone/media-asset/072014-YRHkapPGWTi6AMpF.mp3" },
+  { id: "Chinese (Mandarin)_Mature_Woman",          label: "error", group: ZH_HD, sample: "https://scene.vidu.zone/media-asset/072014-YRHkapPGWTi6AMpF.mp3" },
   { id: "Chinese (Mandarin)_Unrestrained_Young_Man",label: "不羁青年", group: ZH_HD, sample: "https://scene.vidu.zone/media-asset/072014-ErSH4gUWyXwoKm0N.mp3" },
   { id: "Arrogant_Miss",                            label: "嚣张小姐", group: ZH_HD, sample: "https://scene.vidu.zone/media-asset/072014-tN236iR4Y4UIYhtu.mp3" },
   { id: "Robot_Armor",                              label: "机械战甲", group: ZH_HD, sample: "https://scene.vidu.zone/media-asset/072014-QH6ZIG4sFWV5LG1n.mp3" },

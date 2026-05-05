@@ -15,10 +15,10 @@ export const maxDuration = 800;
 export async function POST(req: Request) {
   let session;
   try { session = await requireUser(); }
-  catch { return NextResponse.json({ error: "璇峰厛鐧诲綍" }, { status: 401 }); }
+  catch { return NextResponse.json({ error: "error" }, { status: 401 }); }
 
   const body = await req.json().catch(() => null);
-  if (!body?.modelId || !body?.prompt) return NextResponse.json({ error: "鍙傛暟閿欒" }, { status: 400 });
+  if (!body?.modelId || !body?.prompt) return NextResponse.json({ error: "error" }, { status: 400 });
   const duration = Math.min(Math.max(parseInt(body.duration) || 5, 1), 30);
   const rawParamsIn =
     body.params && typeof body.params === "object" && !Array.isArray(body.params)
