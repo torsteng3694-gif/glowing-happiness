@@ -8,7 +8,7 @@
     "dev:turbo": "next dev --turbopack -H 0.0.0.0 -p 3000",
     "dev:reset": "powershell -NoProfile -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next }; next dev -H 0.0.0.0 -p 3000\"",
     "dev:local": "next dev -H 127.0.0.1 -p 3000",
-    "build": "prisma generate && prisma db push --accept-data-loss --skip-generate && tsx prisma/seed.ts && next build",
+    "build": "prisma generate && node scripts/build-db-setup.mjs && next build",
     "build:nodb": "prisma generate && next build",
     "build:deploy": "prisma generate && prisma migrate deploy && next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
